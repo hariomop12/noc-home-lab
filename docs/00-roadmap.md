@@ -21,7 +21,7 @@ Rule: har phase ka exit criteria clear hai. Pehle wala 90% na ho, agla shuru nah
 - [ ] GNS3 projects rename → `lab-NN-naam`
 - [ ] Khaali/duplicate projects delete (`Temp`, `flab3`, `5`, `flab1-1`, `flab2-1`, `lab4f-1`)
 - [ ] Ek "Lab Template" GNS3 project banao (vios + vios_l2 + VPCS + docker network pre-wired)
-- [ ] Remote (GitHub) add + first push
+- [x] Remote (GitHub) add + first push → `hariomop12/noc-home-lab` (branch `main`)
 
 **Exit:** naya lab 5 min me start ho jaye — template kholo, naam do, kaam shuru.
 
@@ -107,4 +107,4 @@ Scenarios (GNS3 pe pehle tod do, phir fix karo):
 
 | Date | Kya kiya |
 |---|---|
-| 2026-10-12 | Phase 0 foundation — repo scaffold, IP plan, golden configs, template |
+| 2026-10-12 | Phase 0 foundation — repo scaffold, IP plan, golden configs, template, first push |

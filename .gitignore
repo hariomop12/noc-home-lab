@@ -1,0 +1,33 @@
+# ================= GNS3 =================
+# VM disk images (bade + licensed) — kabhi push nahi
+*.qcow2
+*.qcow
+*.vmdk
+*.vdi
+*.img
+*.bin
+*.iso
+
+# GNS3 generated stuff
+**/project-files/
+*.gns3_perms
+*.log
+
+# ================= Secrets =================
+*.pem
+*.key
+*.ppk
+vault_pass*
+.ansible/vault_pass*
+
+# ================= Python / Ansible =================
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.retry
+
+# ================= OS junk =================
+.DS_Store
+Thumbs.db
+*~

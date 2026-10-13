@@ -42,7 +42,7 @@ The reasoning behind the ordering is in [../docs/00-roadmap.md](../docs/00-roadm
 | 01 | [Basic LAN](lab-01-basic-lan/README.md) | micro | 45 min | Switch ports, MAC learning, ARP, ICMP, first capture | not-started |
 | 02 | [Router + 2 LANs](lab-02-router-two-lans/README.md) | micro | 60 min | Addressing, gateway role, static route, routing table, traceroute | not-started |
 | 03 | [VLAN + Trunk + Inter-VLAN](lab-03-vlan-trunk/README.md) | micro | 90 min | VLANs, 802.1Q, trunking, router-on-a-stick | done |
-| 04 | [DHCP + DNS + HTTP](lab-04-dhcp-dns-http/README.md) | micro | 90 min | DORA, relay, DNS resolution, HTTP over TCP, Docker services | not-started |
+| 04 | [DHCP + DNS + HTTP](lab-04-dhcp-dns-http/README.md) | micro | 90 min | DORA, relay, DNS resolution, HTTP over TCP, Docker services | in-progress |
 | 05 | [Network Management](lab-05-network-management/README.md) | micro | 90 min | SSH hardening, NTP, syslog, SNMP | not-started |
 
 ## Combo and complex labs

@@ -5,31 +5,48 @@ status: active
 
 # Golden Configs
 
-Reusable, tested baselines. Yahi se har lab start hota hai.
+Reusable, verified baselines. Every lab starts by copying one of these.
 
-| File | Kiske liye | Kya include hai |
+| File | For | What it contains |
 |---|---|---|
-| `vios-router-baseline.cfg` | vios L3 router | hostname, SSH, secrets, NTP, syslog, SNMP, Loopback0, CDP/LLDP |
-| `vios-switch-baseline.cfg` | vios_l2 switch | VLANs 10/20/30/40/99, SVI mgmt, SSH, STP rapid-pvst, trunk template |
+| `vios-router-baseline.cfg` | `vios` L3 router | Hostname, SSH, secrets, NTP, syslog, SNMP, Loopback0, CDP/LLDP |
+| `vios-switch-baseline.cfg` | `vios_l2` switch | VLANs 10/20/30/40/99, management SVI, SSH, rapid-PVST, access and trunk templates |
 
-## Convention (IP plan ke hisaab se)
+## Conventions these baselines follow
 
-- Router: Loopback0 = `10.255.0.<n>` (R1 → .1)
-- Switch mgmt: `10.10.99.1<n>` (SW1 → 10.10.99.11), gateway `10.10.99.1`
-- DNS/NTP/Syslog: `10.100.0.10/13/11`
-- Password: `Cisco123` (lab only)
+| Item | Value |
+|---|---|
+| Router Loopback0 | `10.255.0.<N>` — R1 is `10.255.0.1` |
+| Switch management address | `10.10.99.1<N>` — SW1 is `10.10.99.11` |
+| Switch default gateway | `10.10.99.1` |
+| DNS / NTP / Syslog | `10.100.0.10` / `10.100.0.13` / `10.100.0.11` |
+| Enable secret and local user | `Cisco123` (lab only) |
 
-## Naya golden banane ka tarika
+Both files contain placeholders: `<N>` is the device number and `X/0` is the
+interface slot, so the baseline can be pasted onto any node of that type.
 
-1. Lab me config karo, **verify karo** (ping + `show` output OK).
-2. `configs/lab-NN/<device>.cfg` me export karo.
-3. Sirf generic cheezein `golden-configs/` me merge karo (lab-specific IP/VLAN nahi).
-4. Commit: `configs: golden <device> — <kya add hua>`
+Interface examples are commented out rather than active. A baseline that
+configures interfaces it should not own causes confusion in the next lab; a
+commented example does not.
 
-## TODO (aage add karna hai)
+## Adding a new golden config
+
+1. Configure and **verify** in a lab (ping works, `show` output is as expected).
+2. Export it to `configs/lab-NN/<device>.cfg`.
+3. Merge only the reusable parts into `golden-configs/` — strip anything
+   lab-specific such as a particular interface address or a one-off VLAN.
+4. Commit: `configs: golden — add OSPF baseline`.
+
+## Planned additions
 
 - [ ] `vios-router-ospf.cfg` — single-area OSPF baseline
 - [ ] `vios-router-nat.cfg` — NAT/PAT overload baseline
-- [ ] `vios-switch-l2sec.cfg` — port-security, BPDU guard, DHCP snooping
-- [ ] `ios-acl-standards.cfg` — standard + extended ACL examples
-- [ ] `ios-ipv6-baseline.cfg` — IPv6 + SLAAC
+- [ ] `vios-switch-l2sec.cfg` — port security, BPDU guard, DHCP snooping
+- [ ] `ios-acl-examples.cfg` — standard and extended ACL patterns
+- [ ] `ios-ipv6-baseline.cfg` — IPv6 addressing with SLAAC
+
+## Related documents
+
+- [../README.md](../README.md)
+- [../../docs/01-ip-plan.md](../../docs/01-ip-plan.md)
+- [../../docs/05-ios-cheatsheet.md](../../docs/05-ios-cheatsheet.md)

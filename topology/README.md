@@ -3,46 +3,71 @@ tags: [homelab, topology, gns3]
 status: active
 ---
 
-# Topology — kaise organize karein
+# Topology
 
-Har lab ka **apna folder**: `topology/lab-NN-naam/`
+Archive of the GNS3 topologies built in this lab. One file per lab, exported as
+a **portable project** so it can be reopened on any machine.
 
 ```
-topology/lab-01-basic-lan/
-├── README.md            # lab note (template se banao)
-├── lab-01.gns3project   # GNS3 portable export
-└── diagram.png          # optional screenshot (GNS3 "Export as image")
+topology/
+├── README.md
+├── lab-01-basic-lan.gns3project
+├── lab-02-router-two-lans.gns3project
+└── ...
 ```
 
-## GNS3 se export (portable)
+Lab guides live in [../labs/](../labs/). This folder holds only the GNS3 exports —
+the topology is the artefact, the guide is the knowledge.
 
-`File → Export portable project` → `.gns3project` file `topology/lab-NN-naam/` me save karo.
+## Exporting from GNS3
 
-**`.gns3project` commit karo, `project-files/` nahi** — wo `.gitignore` me hai (bade + lokal paths).
+`File → Export portable project`
 
-## Import (dusri machine / fresh start)
+Then move the file in:
 
-`File → Import portable project` → `.gns3project` select → bas.
+```bash
+mv ~/Downloads/lab-03-vlan-trunk.gns3project ~/noc-home-lab/topology/
+```
 
-## Lab note kaise likhein
+The export bundles the topology and the node definitions into one file.
+`project-files/` is **not** committed — it is listed in `.gitignore` because it
+contains large, machine-specific fragments that break when moved between
+machines.
 
-1. `lab-00-template/README.md` copy karo → `topology/lab-NN-naam/README.md`
-2. Frontmatter: `lab`, `level`, `status`, `date`
-3. Objective, Topology, IP plan (link karo), Tasks, Verification, "Kya seekha" bharo
-4. `README.md` ki status table update karo (`not-started` → `in-progress` → `done`)
+## Importing
 
-## Configs export (lab ke baad)
+`File → Import portable project` → select the `.gns3project` file.
 
-GNS3 me node pe right-click → **Export config**, ya terminal me `show running-config` →
-`configs/lab-NN/<device>.cfg` me paste karo.
+If GNS3 complains about missing images, the required image is missing locally.
+The list of required images is in
+[../docs/02-device-inventory.md](../docs/02-device-inventory.md).
 
-Wahi config `configs/golden-configs/` me promote karo jab wo reusable ho.
+## Why the export and not the live project
 
-## Naming rule
+| Live project (`~/GNS3/projects/`) | Export (`topology/`) |
+|---|---|
+| Working copy, changes constantly | Frozen snapshot of a finished lab |
+| Contains `project-files/`, machine paths | Self-contained bundle |
+| Not safe to move between machines | Moves cleanly |
+| Not committed | Committed |
 
-| Cheez | Format | Example |
+The live project is where the lab is built. The export is what survives.
+
+## Naming rules
+
+| Thing | Format | Example |
 |---|---|---|
-| Folder | `lab-NN-naam` | `lab-03-vlan-trunk` |
-| Project | `lab-NN-naam` (same!) | `lab-03-vlan-trunk` |
-| Capture | `lab-NN-naam-<kya>.pcapng` | `lab-01-basic-lan-arp.pcapng` |
+| Repository folder | `labs/lab-NN-name/` | `labs/lab-03-vlan-trunk/` |
+| GNS3 project | `lab-NN-name` (identical) | `lab-03-vlan-trunk` |
+| Export file | `lab-NN-name.gns3project` | `lab-03-vlan-trunk.gns3project` |
+| Capture | `lab-NN-name-<what>.pcapng` | `lab-01-basic-lan-arp.pcapng` |
 | Config | `<device>.cfg` | `R1.cfg`, `SW1.cfg` |
+
+Keeping the GNS3 project name identical to the folder name means the file, the
+project and the note are never a guessing game.
+
+## Related documents
+
+- [../docs/03-gns3-setup.md](../docs/03-gns3-setup.md) — building the environment
+- [../labs/README.md](../labs/README.md) — lab index
+- [../docs/01-ip-plan.md](../docs/01-ip-plan.md) — the addressing every topology uses

@@ -5,33 +5,66 @@ status: active
 
 # Configs
 
-| Folder | Kya hai | Kab use karein |
+Device configurations, in two flavours.
+
+| Folder | Contains | When it is used |
 |---|---|---|
-| `golden-configs/` | Reusable baselines (tested, working) | Har naye lab ki starting point |
-| `lab-NN/` | Us lab ki final configs | Lab ke baad, proof ke liye |
+| `golden-configs/` | Reusable, tested baselines | Starting point for every new lab |
+| `lab-NN/` | The final configuration of a specific lab | After the lab is verified, as evidence |
 
-## Rule
+## The rule
 
-1. Lab start karte waqt `golden-configs/` se copy karo — zero se nahi likhna.
-2. Lab me jo better hua (naya ACL, hardening, tuning) → wapas `golden-configs/` me promote karo.
-3. Golden config **hamesha working** ho. Tuta hua config golden me nahi jaata.
+1. **Start from golden.** Copy a baseline, change only what the lab needs. Never
+   retype a baseline from memory — that is how typos become "unexplained bugs".
+2. **Promote good changes back.** If a lab produced a better baseline (a cleaner
+   ACL, a hardening step worth keeping), merge it into `golden-configs/`.
+3. **Golden means working.** A configuration that has not been verified does not
+   belong in `golden-configs/`.
 
-## Kaise export karein
+## Exporting a configuration from GNS3
 
-GNS3 → node pe right-click → **Export config** → `configs/lab-NN/<device>.cfg`
+Either:
 
-Ya terminal se:
+- Right-click the node → **Export config**, or
+- On the device console: `show running-config`, then copy the output into
+  `configs/lab-NN/<device>.cfg`.
+
+Export **after** verification, not before. A config exported mid-debugging is a
+record of a mistake.
+
+## Folder layout
+
 ```
-R1# show running-config
+configs/
+├── README.md
+├── golden-configs/
+│   ├── README.md
+│   ├── vios-router-baseline.cfg
+│   └── vios-switch-baseline.cfg
+└── lab-03-vlan-trunk/
+    ├── R1.cfg
+    ├── SW1.cfg
+    └── SW2.cfg
 ```
-Copy → `configs/lab-NN/R1.cfg` me paste.
 
-## Password convention (lab only)
+`configs/lab-NN/` appears when the first lab is completed. It does not need to
+exist in advance.
 
-| Cheez | Value |
+## Credentials used in this lab
+
+| Item | Value |
 |---|---|
-| enable secret | `Cisco123` |
-| local user | `admin` / `Cisco123` |
-| domain | `lab.local` |
+| `enable secret` | `Cisco123` |
+| Local user | `admin` / `Cisco123` |
+| Domain name | `lab.local` |
 
-⚠️ Ye sirf lab ke liye hai. Asli network me `secret` + AAA use hota hai.
+⚠️ These values exist only so the lab is reproducible. A real network uses
+centralised authentication (TACACS+ or RADIUS), unique per-engineer credentials,
+and no shared local passwords. Do not carry this convention anywhere beyond the
+lab.
+
+## Related documents
+
+- [golden-configs/README.md](golden-configs/README.md)
+- [../docs/01-ip-plan.md](../docs/01-ip-plan.md) — the addresses these configs use
+- [../docs/05-ios-cheatsheet.md](../docs/05-ios-cheatsheet.md) — command reference

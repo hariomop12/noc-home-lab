@@ -5,106 +5,125 @@ status: in-progress
 
 # 00 — Roadmap
 
-Tier structure: **Micro → Combo → Real (ticket) → Complex → Full NOC.**
+The plan for this lab, in phases. Each phase has an exit criterion: the next
+phase does not start until the previous one is at least 90% done.
 
-Rule: har phase ka exit criteria clear hai. Pehle wala 90% na ho, agla shuru nahi.
-
----
-
-## Phase 0 — Foundation (repo + GNS3 hygiene)
-
-- [x] Repo structure (topology / configs / docs / wireshark / ansible)
-- [x] `.gitignore` (images, keys, project-files ignored)
-- [x] IP plan fix (ek scheme, sab labs me same)
-- [x] Golden configs — vios router + switch baseline
-- [x] Lab note template
-- [ ] GNS3 projects rename → `lab-NN-naam`
-- [ ] Khaali/duplicate projects delete (`Temp`, `flab3`, `5`, `flab1-1`, `flab2-1`, `lab4f-1`)
-- [ ] Ek "Lab Template" GNS3 project banao (vios + vios_l2 + VPCS + docker network pre-wired)
-- [x] Remote (GitHub) add + first push → `hariomop12/noc-home-lab` (branch `main`)
-
-**Exit:** naya lab 5 min me start ho jaye — template kholo, naam do, kaam shuru.
+Structure: **Micro → Combo → Complex → Tickets → Full NOC.**
 
 ---
 
-## Phase 1 — Micro Labs (01-05)
+## Phase 0 — Foundation
 
-Ek lab = ek concept, 30-60 min. Har lab me: objective, topology, tasks, verification, "kya seekha".
+Nothing in this phase teaches networking. It exists so that every later lab can
+start in five minutes instead of an hour.
 
-- [ ] **Lab 01 — Basic LAN**: 2 PC + 1 switch, same subnet, ARP + MAC table dekho
-- [ ] **Lab 02 — Router + 2 LANs**: 2 subnets, router 2 interface, static route, ping/traceroute
-- [ ] **Lab 03 — VLAN + Trunk + Inter-VLAN**: VLAN 10/20/99, 802.1Q trunk, router-on-a-stick
-- [ ] **Lab 04 — DHCP + DNS + HTTP**: dnsmasq (DHCP+wildcard DNS) + nginx, docker me
-- [ ] **Lab 05 — Network Management**: SSH, NTP, syslog (rsyslog), SNMP poll, Zabbix agent scope
+- [x] Repository structure (`docs/`, `labs/`, `configs/`, `topology/`, `wireshark/`, `ansible/`)
+- [x] `.gitignore` covering images, keys, GNS3 project files and secrets
+- [x] Fixed addressing scheme in `docs/01-ip-plan.md`
+- [x] Golden baseline configs for `vios` and `vios_l2`
+- [x] Lab guide template
+- [x] Reference library (setup, troubleshooting method, cheatsheets, monitoring, glossary)
+- [x] Git remote configured and first push
+- [ ] GNS3 project cleanup: rename projects to `lab-NN-name`, delete empty and duplicate ones
+- [ ] Build a `Lab Template` GNS3 project (vios + vios_l2 + VPCS + Docker host, pre-cabled)
+- [ ] Verify one full round trip: template → lab → export → commit
 
-**Exit:** Micro lab apne aap bana sake, troubleshoot kar sake, capture samajh sake.
+**Exit criterion:** a new lab can be started from the template, built, verified,
+exported and committed without any setup work or improvisation.
+
+---
+
+## Phase 1 — Micro labs (01-05)
+
+One concept per lab, 45-90 minutes, always ending with a broken thing to fix.
+
+- [ ] **Lab 01 — Basic LAN.** Two PCs and a switch. Watch MAC learning happen,
+      capture ARP, explain why the first ping is slower than the second.
+- [ ] **Lab 02 — Router + 2 LANs.** Two subnets, one router. Understand what a
+      gateway actually is, and read a routing table like a sentence.
+- [x] **Lab 03 — VLAN + Trunk + Inter-VLAN.** VLAN 10/20/99, an 802.1Q trunk,
+      and router-on-a-stick subinterfaces. Break the trunk and diagnose it.
+- [ ] **Lab 04 — DHCP + DNS + HTTP.** dnsmasq and nginx as containers. Capture a
+      full DORA exchange, a DNS query, and an HTTP request over TCP.
+- [ ] **Lab 05 — Network Management.** SSH hardening, NTP, central syslog, SNMP
+      polling. First time the lab produces telemetry instead of just packets.
+
+**Exit criterion:** a micro lab can be designed, built, verified, captured,
+broken and fixed without following a guide line by line.
 
 ---
 
 ## Phase 2 — Combo: Small Enterprise HQ
 
-Config nahi milegi — **spec milegi**. Khud design karo: topology, IP scheme, VLANs, ports, routing.
+The first lab where no configuration is given. Only a specification.
 
-> Company: 100-200 users · Departments: HR, IT, Sales
-> Required: DHCP, DNS, HTTP, SSH, Syslog, NTP · 2 switches + router
-> Security: VLAN separation · Monitoring: syslog + SNMP
+> A company of 100-200 users across HR, IT and Sales. Two switches and one
+> router. The site needs DHCP, DNS, HTTP, SSH, central syslog and NTP. Departments
+> must be separated. Monitoring must be able to see every device.
 
-- [ ] Design doc likho (`docs/designs/hq-design.md`) — phir configure karo
-- [ ] Inter-VLAN + OSPF (single area) + default route
-- [ ] ACL (extended) — sales ko HR tak mat jaane do
-- [ ] DHCP relay (`ip helper-address`) — DHCP server servers VLAN me
-- [ ] Verification: har requirement ko prove karo (`show` + ping + capture)
+- [ ] Write the design document before touching GNS3: `docs/designs/hq-design.md`
+      — topology, addressing, VLANs, port assignments, routing, security intent.
+- [ ] Build it from your own design, then compare against the design document.
+- [ ] Inter-VLAN routing with OSPF, plus a default route out.
+- [ ] Extended ACLs: Sales cannot reach HR, IT can reach everything.
+- [ ] DHCP relay (`ip helper-address`) with the DHCP server in the SERVERS VLAN.
+- [ ] Prove every requirement with a command or a capture, not an opinion.
 
-**Exit:** poora HQ end-to-end chale + monitoring me device dikhe.
+**Exit criterion:** the site works end to end, every device is visible in
+monitoring, and the design document matches what is actually running.
 
 ---
 
 ## Phase 3 — Branch + WAN
 
-- [ ] 2 site (HQ + BR1) + ISP cloud
-- [ ] Pehle static route, phir **OSPF** — convergence compare karo
-- [ ] **NAT/PAT** (overload) — LAN se internet sim
-- [ ] WAN failover: primary down → backup route active
-- [ ] Wireshark: OSPF hello/packet decode
+- [ ] Two sites (HQ and BR1) connected through a simulated ISP.
+- [ ] Static routing first, then OSPF. Measure and compare convergence.
+- [ ] NAT/PAT overload so the LAN can reach the simulated internet.
+- [ ] WAN failure: primary path down, backup path takes over. Record the timeline.
+- [ ] Decode OSPF hellos and the OSPF database exchange in Wireshark.
+
+**Exit criterion:** a link can be failed and the network recovers without manual
+intervention, and the recovery is explained from the packet level up.
 
 ---
 
-## Phase 4 — Real / Ticket Labs
+## Phase 4 — Ticket labs
 
-Rule: **"config karo" nahi — "ye problem hai, fix karo".**
-Har ticket: symptom → hypothesis → checks → root cause → fix → prevention.
+The rule here is simple: **you are not given a configuration, you are given a
+problem.** Format and severity guide: [tickets/README.md](tickets/README.md).
 
-Scenarios (GNS3 pe pehle tod do, phir fix karo):
+Method to follow every time: symptom → hypothesis → checks → root cause → fix →
+prevention. Ten scenarios are listed in [../labs/README.md](../labs/README.md).
 
-| ID | Ticket | Status |
-|---|---|---|
-| R1 | LAN chalu, internet nahi (NAT/default route) | not-started |
-| R2 | DHCP pool exhausted (PC ko IP nahi mila) | not-started |
-| R3 | VLAN mismatch / trunk allowed-vlan galat | not-started |
-| R4 | STP loop / broadcast storm (CPU 100%) | not-started |
-| R5 | OSPF neighbor stuck in EXSTART / flapping | not-started |
-| R6 | Interface flap + CRC errors | not-started |
-| R7 | High latency / packet loss WAN pe (`tc` se emulate) | not-started |
-| R8 | ACL ne silently traffic block kar diya | not-started |
-| R9 | Duplicate IP address conflict | not-started |
-| R10 | DNS resolve nahi ho raha (par ping IP se chal raha) | not-started |
+- [ ] Break a working multi-VLAN network in ten different ways, one at a time.
+- [ ] For each one, write a ticket with the real commands and real output.
+- [ ] Write the RCA in a way a non-engineer could follow.
+- [ ] For each one, name the monitoring alert that *should* have caught it.
+
+**Exit criterion:** a symptom is given, and root cause is found in under 15
+minutes using method rather than memory.
 
 ---
 
-## Phase 5 — Full NOC Simulation
+## Phase 5 — Full NOC simulation
 
-- [ ] Zabbix (docker: server + web + agent2) — SNMP se routers poll karo
-- [ ] Syslog central (rsyslog) + NTP
-- [ ] Dashboards + triggers: `interface down`, CPU high, packet loss
-- [ ] HSRP/VRRP failover drill + alert timeline likho
-- [ ] **Ansible** se golden config push (baseline automate) — yahi Phase 14 (Automation) ka entry point
+- [ ] Zabbix stack running in Docker (server, frontend, Postgres, agent).
+- [ ] Every router and switch polled over SNMP; interfaces and CPU monitored.
+- [ ] Central syslog collecting from every device, with accurate NTP.
+- [ ] Triggers and dashboards for: interface down, high CPU, packet loss,
+      SNMP unreachable, syslog severity 0-2.
+- [ ] Failover drill: fail a link, alert fires, timeline documented end to end.
+- [ ] Ansible pushes the golden baseline to every device in one run, and the
+      result is diffed against the manual configuration.
 
-**Exit:** kuch toote to alert aaye → tu detect → diagnose → document kare. Yeh actual NOC job hai.
+**Exit criterion:** something breaks, an alert fires before a user notices, and
+the response follows a written runbook.
 
 ---
 
 ## Progress log
 
-| Date | Kya kiya |
+| Date | Change |
 |---|---|
-| 2026-10-12 | Phase 0 foundation — repo scaffold, IP plan, golden configs, template, first push |
+| 2026-10-12 | Phase 0 foundation: repo scaffold, IP plan, golden configs, templates, reference library, first push |
+| 2026-10-13 | Lab 03 (VLAN + trunk + inter-VLAN) built, verified, captured, fault injected and fixed |

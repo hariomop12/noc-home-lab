@@ -1,5 +1,11 @@
-# ================= GNS3 =================
-# VM disk images (bade + licensed) — kabhi push nahi
+# ============================================================
+#  NOC Home Lab — .gitignore
+#  The repository stores knowledge (topologies, configs, notes,
+#  captures). It never stores images, secrets or generated files.
+# ============================================================
+
+# ---------------- GNS3 QEMU / disk images ----------------
+# Large, and licensed. Never committed.
 *.qcow2
 *.qcow
 *.vmdk
@@ -8,26 +14,28 @@
 *.bin
 *.iso
 
-# GNS3 generated stuff
+# ---------------- GNS3 generated files ----------------
+# project-files/ holds machine-specific fragments that break when moved
+# between machines. The portable .gns3project export is what gets committed.
 **/project-files/
 *.gns3_perms
 *.log
 
-# ================= Secrets =================
+# ---------------- Secrets ----------------
 *.pem
 *.key
 *.ppk
 vault_pass*
 .ansible/vault_pass*
 
-# ================= Python / Ansible =================
+# ---------------- Python / Ansible ----------------
 __pycache__/
 *.pyc
 .venv/
 venv/
 *.retry
 
-# ================= OS junk =================
+# ---------------- OS junk ----------------
 .DS_Store
 Thumbs.db
 *~

@@ -5,59 +5,97 @@ status: active
 
 # 02 — Device Inventory
 
-## GNS3 templates (jo already buggy/halaki hain)
+What this lab is made of, what each piece is for, and what it costs in RAM.
 
-| Template | Image | Type | RAM (typ) | Kis kaam ke liye |
+RAM is the binding constraint on this machine (9.6 GiB total, shared with the
+desktop). Every decision below exists to keep a full lab under about 4 GB.
+
+## GNS3 node templates
+
+| Template | Image | Type | Typical RAM | Used for |
 |---|---|---|---|---|
-| Cisco vios L3 | `vios-adventerprisek9-m.SPA.159-3.M6.qcow2` | QEMU | ~512 MB | Router — routing, NAT, ACL, OSPF |
-| Cisco vios L2 | `vios_l2-adventerprisek9-m.ssa.high_iron_20200929.qcow2` | QEMU | ~512 MB | Switch — VLAN, trunk, STP |
-| Cisco c7200 | `c7200-adventerprisek9-mz.153-3.XB12.image` | IOS (dynamips) | ~256 MB | Legacy — kam use karo, RAM bacha ke |
-| VPCS | built-in | VPCS | ~10 MB | PC / endpoints — **default choice** |
+| Cisco vios L3 | `vios-adventerprisek9-m.SPA.159-3.M6.qcow2` | QEMU | ~512 MB | Routers: routing, NAT, ACLs, OSPF, management plane |
+| Cisco vios L2 | `vios_l2-adventerprisek9-m.ssa.high_iron_20200929.qcow2` | QEMU | ~512 MB | Switches: VLANs, trunking, STP, port security |
+| Cisco c7200 | `c7200-adventerprisek9-mz.153-3.XB12.image` | IOS (dynamips) | ~256 MB | Fallback only, when a feature is missing on vios |
+| VPCS | built in | VPCS | ~10 MB | Endpoints. The default choice for every "PC" |
 
-> `c7200` sirf tab jab koi feature vios pe na mile. Warna RAM bacha ke vios.
+Rules:
 
-## Docker containers (servers ke liye)
+1. **VPCS for every endpoint.** A PC in this lab never needs a full OS.
+2. **Docker for every server.** A container is one to two orders of magnitude
+   cheaper than a QEMU VM.
+3. **`c7200` only as a fallback.** It is RAM-hungry, slow to boot and teaches
+   nothing that `vios` does not teach. Reach for it only when an image feature
+   is genuinely missing.
+4. **Boot switches last, or wait for them.** `vios_l2` takes noticeably longer to
+   come up than `vios`. Configuring an SVI before boot completes looks like a bug
+   and is not one.
 
-| Image | Kya hai | Role |
+## Docker containers
+
+| Image | Purpose | Address |
 |---|---|---|
-| `dockurr/dnsmasq` | DHCP + DNS | SRV-DNS (10.100.0.10) |
-| `nginx:alpine` | Web | SRV-WEB (10.100.0.12) |
-| `busybox` | light tools | ping/iperf/netcat, tcpdump sidecar |
-| `zabbix/zabbix-server-pgsql` | Zabbix server | polling + triggers |
-| `zabbix/zabbix-web-nginx-pgsql` | Zabbix UI | dashboard |
-| `postgres:16-alpine` | DB | Zabbix backend |
-| `zabbix/zabbix-agent2` | Agent | Linux host metrics |
+| `dockurr/dnsmasq` | DHCP and DNS for the whole lab | `10.100.0.10` |
+| `nginx:alpine` | HTTP/HTTPS target for client tests | `10.100.0.12` |
+| `busybox` | Quick throwaway tools: `ping`, `wget`, `nc`, `tcpdump` | on demand |
+| `zabbix/zabbix-server-pgsql` | Monitoring server: polling, triggers, actions | `10.100.0.21` |
+| `zabbix/zabbix-web-nginx-pgsql` | Monitoring frontend | `10.100.0.20` |
+| `postgres:16-alpine` | Zabbix database backend | `10.100.0.22` |
+| `zabbix/zabbix-agent2` | Linux metrics agent | `10.100.0.23` |
 
-Chaahiye (abhi nahi hai): `frrouting/frr` (Linux routing), `alpine` (rsyslog/chrony custom), `iperf3` image.
+Wanted later, not pulled yet:
+
+| Image | Why |
+|---|---|
+| `frrouting/frr` | Linux-based routing daemon, useful for automation later |
+| an alpine-based rsyslog image | Central syslog collector as a container |
+| an alpine-based chrony image | NTP server as a container |
+| `iperf3` / `networkstatic/iperf3` | Throughput and jitter testing |
 
 ## Device naming
 
-| Prefix | Matlab | Example |
-|---|---|---|
-| `R` | Router (vios L3) | R1, R2, ISP |
-| `SW` | Switch (vios_l2) | SW1, SW2 |
-| `PC` | VPCS endpoint | PC1, PC2 |
-| `SRV-` | Docker service | SRV-DNS, SRV-WEB, SRV-ZBX-SRV |
-| `FW` | Firewall (aage) | FW1 |
-| `CLOUD` | GNS3 host/cloud breakout | CLOUD-HOST |
-
-## Resource budget — kya kitna chalega
-
-| Scenario | Nodes | Approx RAM | Viable? |
+| Prefix | Device | Template | Example |
 |---|---|---|---|
-| Micro lab | 1-2 R + 1 SW + 3 PC | ~1.5 GB | ✅ easy |
-| HQ (P2) | 2 R + 2 SW + 4 PC + 3 docker | ~3 GB | ✅ |
-| 2-site WAN (P3) | 3 R + 2 SW + 6 PC + 4 docker | ~4.5 GB | ✅ (close others first) |
-| Full NOC (P5) | + Zabbix stack (4 containers) | ~5.5-6 GB | ⚠️ Zabbix stack ~1 GB lagega, monitor karte raho |
-| Anything above 8 vIOS | — | >6 GB | ❌ |
+| `R` | Router | vios L3 | `R1`, `R2`, `ISP` |
+| `SW` | Switch | vios_l2 | `SW1`, `SW2` |
+| `PC` | Endpoint | VPCS | `PC1`, `PC2` |
+| `SRV-` | Container service | Docker | `SRV-DNS`, `SRV-WEB` |
+| `FW` | Firewall (later) | — | `FW1` |
+| `CLOUD` | GNS3 host/cloud breakout | built in | `CLOUD-HOST` |
 
-**Discipline:** ek time pe ek hi lab chalayein. Session ke baad `File → Close` (suspend nahi) — warna RAM leak.
+Names are stable across all labs. `R1` is always the HQ edge router, `SW1` is
+always the first access switch. This means a screenshot from a lab three months
+ago is still readable.
 
-## GNS3 setup checklist (ek baar)
+## Resource budget
 
-- [ ] vios + vios_l2 dono templates ka **QEMU binary** `qemu-system-x86_64`, `-enable-kvm` on
-- [ ] Har template ke liye **console type = telnet**, `console port` auto
-- [ ] `vios_l2` template: `-machine` type check karo, boot thoda slow hoga — normal
-- [ ] Docker template: "Docker container" section, `console type = telnet`
-- [ ] Baad ke liye: Zabbix images ka `docker pull` (already pulled)
-- [ ] "Use as a template" wale nodes `Lab Template` project me rakh do — naya lab instant
+| Scenario | Nodes | Approx RAM | Verdict |
+|---|---|---|---|
+| Micro lab | 1-2 routers + 1 switch + 3 PCs | ~1.5 GB | Comfortable |
+| Lab 06 HQ | 2 routers + 2 switches + 4 PCs + 3 containers | ~3 GB | Fine |
+| Lab 07 two sites | 3 routers + 2 switches + 6 PCs + 4 containers | ~4.5 GB | Close all other projects first |
+| Lab 09 full NOC | Above + 4-container Zabbix stack | ~5.5-6 GB | Watch `free -h`, expect swapping |
+| Anything above 8 routers | — | > 6 GB | Not viable on this machine |
+
+Discipline that keeps this working:
+
+- One lab open at a time. Close the project when finished, do not suspend it.
+- Check `free -h` before starting a heavy lab, not after it starts swapping.
+- Idle routers still cost RAM. Shut down nodes that the lab is not using.
+- If a lab needs a big topology, split it across two labs rather than one huge one.
+
+## GNS3 template setup checklist
+
+One-time work, per machine.
+
+- [ ] `vios` and `vios_l2` templates use `qemu-system-x86_64` with `-enable-kvm`
+- [ ] Console type `telnet`, console port allocation automatic
+- [ ] Adapters per template: 4 for `vios`, matching GNS3's default slot layout
+- [ ] Memory per node: 512 MB for `vios`, 512 MB for `vios_l2`
+- [ ] `vios_l2` boot tested once in isolation before being used in a real lab
+- [ ] Docker template present with console type `telnet`
+- [ ] VPCS template present
+- [ ] All Zabbix images already pulled locally
+- [ ] One `Lab Template` project built containing these nodes as templates only
+
+Details and screenshots-level instructions: [03-gns3-setup.md](03-gns3-setup.md).

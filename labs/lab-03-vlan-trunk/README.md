@@ -188,8 +188,8 @@ Fault #1 was run to completion: `shutdown` on SW1 Gi0/3 → PC1 `ping 10.10.20.1
 
 ## Cleanup
 
-- [ ] Configs exported to `configs/lab-03/` (R1.cfg, SW1.cfg) — from the device console
+- [x] Configs exported to `configs/lab-03/` (R1.cfg, SW1.cfg)
 - [x] Capture saved, trimmed and annotated in `wireshark/`
-- [ ] Status flipped in `labs/README.md`, main `README.md`, skill matrix
+- [x] Status flipped in `labs/README.md`, main `README.md`, skill matrix
 - [ ] GNS3 project closed (not suspended)
 - [ ] Committed with a specific message

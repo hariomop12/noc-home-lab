@@ -11,6 +11,18 @@ Each image reads two environment variables at startup:
 | `LAB_IP` | Address and prefix to assign to the container's interface | `10.100.0.10/24` |
 | `LAB_GW` | Default gateway (optional) | `10.100.0.1` |
 
+**Every image already sets a sensible default** for both, so a container comes
+up addressed with no configuration at all. Set the variables explicitly only to
+override the default (e.g. `LAB_IP=10.100.0.11/24` to run syslog on its own
+address). Defaults:
+
+| Image | Default `LAB_IP` |
+|---|---|
+| `dnsmasq:lab` | `10.100.0.10/24` |
+| `web:lab` | `10.100.0.12/24` |
+| `noc-tools:lab` | `10.100.0.50/24` |
+| `syslog:lab` | `10.100.0.11/24` |
+
 The entrypoint clears whatever address GNS3 or Docker assigned, applies `LAB_IP`,
 sets the default route, then hands off to the service. Console access stays
 available through GNS3 because each service runs in the foreground.

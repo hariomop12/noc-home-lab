@@ -73,14 +73,14 @@ cd docker
 
 `Preferences → Docker containers → New`, for each image:
 
-| Template name | Image | `LAB_IP` | `LAB_GW` |
+| Template name | Image | `LAB_IP` (default) | `LAB_GW` (default) |
 |---|---|---|---|
 | `SRV-DNS` | `dnsmasq:lab` | `10.100.0.10/24` | `10.100.0.1` |
 | `SRV-WEB` | `web:lab` | `10.100.0.12/24` | `10.100.0.1` |
 | `CLIENT` | `noc-tools:lab` | `10.100.0.50/24` | `10.100.0.1` |
 
-Console type **telnet**. The `LAB_IP` / `LAB_GW` environment variables are what
-make each server come up already addressed.
+Console type **telnet**. The images already default to these addresses, so no
+environment variables are needed — set `LAB_IP` / `LAB_GW` only to override.
 
 ### 2. Build and cable the topology
 

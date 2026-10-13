@@ -22,6 +22,7 @@ available through GNS3 because each service runs in the foreground.
 | noc-tools | `noc-tools:lab` | on demand | Aladdin's cave: tcpdump, nmap, net-snmp, mtr, dig, iperf3 |
 | syslog | `syslog:lab` | `10.100.0.10` → see note | Central syslog collector on UDP/TCP 514 |
 | dnsmasq | `dnsmasq:lab` | `10.100.0.10` | DHCP + DNS for the lab |
+| web | `web:lab` | `10.100.0.12` | nginx HTTP/HTTPS target for client tests |
 
 > The IP plan gives SRV-DNS `10.100.0.10` and SRV-SYSLOG `10.100.0.11`. Only one
 > service runs at a time in the micro labs, so each image defaults to the address
@@ -50,11 +51,11 @@ Now every time the node is dropped into a topology it boots already addressed.
 
 ## Why not just use the stock images
 
-The stock `nginx:alpine` needs no address of its own (it is reached through the
-topology), and is used as-is. The stock `dockurr/dnsmasq` builds its config from
-environment variables and is awkward to pin an address on. For anything where the
-address matters, a small purpose-built image is less work than fighting an
-entrypoint written for a different use case.
+The stock `nginx:alpine` builds its config from templates and needs no address
+of its own, but the lab still needs the web server at a known address
+(`10.100.0.12`), so `web:lab` wraps it with the same `LAB_IP` contract. For
+anything where the address matters, a small purpose-built image is less work
+than fighting an entrypoint written for a different use case.
 
 ## Note on persistence
 

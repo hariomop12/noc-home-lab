@@ -43,7 +43,7 @@ One concept per lab, 45-90 minutes, always ending with a broken thing to fix.
       gateway actually is, and read a routing table like a sentence.
 - [x] **Lab 03 — VLAN + Trunk + Inter-VLAN.** VLAN 10/20/99, an 802.1Q trunk,
       and router-on-a-stick subinterfaces. Break the trunk and diagnose it.
-- [ ] **Lab 04 — DHCP + DNS + HTTP.** dnsmasq and nginx as containers. Capture a
+- [x] **Lab 04 — DHCP + DNS + HTTP.** dnsmasq and nginx as containers. Capture a
       full DORA exchange, a DNS query, and an HTTP request over TCP.
 - [ ] **Lab 05 — Network Management.** SSH hardening, NTP, central syslog, SNMP
       polling. First time the lab produces telemetry instead of just packets.
@@ -127,3 +127,4 @@ the response follows a written runbook.
 |---|---|
 | 2026-10-12 | Phase 0 foundation: repo scaffold, IP plan, golden configs, templates, reference library, first push |
 | 2026-10-13 | Lab 03 (VLAN + trunk + inter-VLAN) built, verified, captured, fault injected and fixed |
+| 2026-10-13 | Lab 04 (DHCP + DNS + HTTP) built, verified, captured, `ip helper-address` fault injected and fixed |

@@ -22,7 +22,8 @@ lab-NN-name-<what>.pcapng
 | `lab-01-basic-lan-arp.pcapng` | Lab 01, the ARP exchange between the two PCs |
 | `lab-02-router-two-lans-ttl.pcapng` | Lab 02, TTL decrement across the router |
 | `lab-03-vlan-trunk-8021q.pcapng` | Lab 03, tagged frames on the trunk |
-| `lab-04-dhcp-dns-http-dora.pcapng` | Lab 04, the full DHCP exchange |
+| `lab-04-dhcp-dns-http-dora.pcapng` | Lab 04, the full DHCP exchange (relayed, server side) |
+| `lab-04-dhcp-dns-http-web.pcapng` | Lab 04, DNS resolution then HTTP over TCP |
 
 The lab number and the link name come first so that sorting the folder groups
 captures by lab automatically.

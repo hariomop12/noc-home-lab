@@ -43,6 +43,8 @@ configs/
 │   └── vios-switch-baseline.cfg
 └── lab-01-basic-lan/
     └── SW1.cfg
+└── lab-02-router-two-lans/
+    └── R1.cfg
 └── lab-03-vlan-trunk/
     ├── R1.cfg
     ├── SW1.cfg

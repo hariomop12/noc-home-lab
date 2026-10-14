@@ -39,7 +39,7 @@ One concept per lab, 45-90 minutes, always ending with a broken thing to fix.
 
 - [x] **Lab 01 — Basic LAN.** Two PCs and a switch. Watch MAC learning happen,
       capture ARP, explain why the first ping is slower than the second.
-- [ ] **Lab 02 — Router + 2 LANs.** Two subnets, one router. Understand what a
+- [x] **Lab 02 — Router + 2 LANs.** Two subnets, one router. Understand what a
       gateway actually is, and read a routing table like a sentence.
 - [x] **Lab 03 — VLAN + Trunk + Inter-VLAN.** VLAN 10/20/99, an 802.1Q trunk,
       and router-on-a-stick subinterfaces. Break the trunk and diagnose it.
@@ -129,3 +129,4 @@ the response follows a written runbook.
 | 2026-10-13 | Lab 03 (VLAN + trunk + inter-VLAN) built, verified, captured, fault injected and fixed |
 | 2026-10-13 | Lab 04 (DHCP + DNS + HTTP) built, verified, captured, `ip helper-address` fault injected and fixed |
 | 2026-10-14 | Lab 01 (Basic LAN) built, verified, captured, Gi0/1 shutdown fault injected and fixed |
+| 2026-10-14 | Lab 02 (Router + 2 LANs) built, verified, captured, Gi0/1 shutdown fault injected and fixed |

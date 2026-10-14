@@ -126,7 +126,7 @@ Capture on: **PC1 ↔ SW1** (the host link of LAN 1).
 Saved as: `wireshark/lab-02-router-two-lans-ttl.pcapng`.
 Filter: `arp || icmp`
 
-One ping across the router:
+One ping across the router (frames 5–6 are a second ping with the same shape):
 
 | Frame | src → dst | Protocol | TTL | What it is |
 |---|---|---|---|---|
@@ -134,6 +134,7 @@ One ping across the router:
 | 2 | `0c:e9:ea:9a:00:00` → `00:50:79:66:68:00` | ARP | — | `10.10.10.1 is at 0c:e9:ea:9a:00:00` |
 | 3 | 10.10.10.10 → 10.10.20.10 | ICMP | 64 | echo request, leaving PC1 |
 | 4 | 10.10.20.10 → 10.10.10.10 | ICMP | 63 | echo reply, *after* R1 routed it |
+| 5–6 | same, seq=2 | ICMP | 64 / 63 | second ping, ARP now cached |
 
 Answered from the capture:
 

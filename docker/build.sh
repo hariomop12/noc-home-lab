@@ -4,7 +4,7 @@ set -eu
 
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
-for img in noc-tools syslog dnsmasq web; do
+for img in noc-tools syslog dnsmasq web ntp; do
   echo "==> building ${img}:lab"
   docker build -t "${img}:lab" -f "${here}/${img}/Dockerfile" "${here}"
 done

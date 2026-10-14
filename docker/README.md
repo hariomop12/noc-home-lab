@@ -22,6 +22,7 @@ address). Defaults:
 | `web:lab` | `10.100.0.12/24` |
 | `noc-tools:lab` | `10.100.0.50/24` |
 | `syslog:lab` | `10.100.0.11/24` |
+| `ntp:lab` | `10.100.0.13/24` |
 
 The entrypoint clears whatever address GNS3 or Docker assigned, applies `LAB_IP`,
 sets the default route, then hands off to the service. Console access stays
@@ -35,6 +36,7 @@ available through GNS3 because each service runs in the foreground.
 | syslog | `syslog:lab` | `10.100.0.10` → see note | Central syslog collector on UDP/TCP 514 |
 | dnsmasq | `dnsmasq:lab` | `10.100.0.10` | DHCP + DNS for the lab |
 | web | `web:lab` | `10.100.0.12` | nginx HTTP/HTTPS target for client tests |
+| ntp | `ntp:lab` | `10.100.0.13` | chrony NTP server for device clock sync |
 
 > The IP plan gives SRV-DNS `10.100.0.10` and SRV-SYSLOG `10.100.0.11`. Only one
 > service runs at a time in the micro labs, so each image defaults to the address

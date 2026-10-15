@@ -11,13 +11,27 @@ a **portable project** so it can be reopened on any machine.
 ```
 topology/
 ├── README.md
-├── lab-01-basic-lan.gns3project
-├── lab-02-router-two-lans.gns3project
+├── lab-05-network-management.gns3project
 └── ...
 ```
 
 Lab guides live in [../labs/](../labs/). This folder holds only the GNS3 exports —
 the topology is the artefact, the guide is the knowledge.
+
+## Exported so far
+
+| File | Lab | Nodes | Notes |
+|---|---|---|---|
+| `lab-05-network-management.gns3project` | 05 | 7 — R1, SW1, SW2, PC1, CLIENT, SRV-SYSLOG, SRV-NTP | ~205 KB; exported with `include_images=false`, so no IOS/QCow2 images are bundled |
+
+The export is produced by GNS3 itself, which guarantees it re-imports cleanly:
+
+```bash
+# via the GUI:  File → Export portable project
+# or via the local server API (no GUI needed):
+curl -s -X POST http://localhost:3080/v3/projects/<project-id>/close         # export needs a stopped project
+curl -s    http://localhost:3080/v3/projects/<project-id>/export?include_images=false -o out.gns3project
+```
 
 ## Exporting from GNS3
 

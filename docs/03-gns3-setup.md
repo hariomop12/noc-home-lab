@@ -91,19 +91,35 @@ Two differences matter:
 The containers used here are listed in
 [02-device-inventory.md](02-device-inventory.md).
 
-## Building the reusable `Lab Template` project
+## The reusable `Lab Template` project
 
-The single highest-value piece of setup work. Build it once, never start from a
-blank canvas again.
+The single highest-value piece of setup work. Built once, it means a new lab
+never starts from a blank canvas again.
 
-1. New project, name it `Lab Template`.
-2. Add one `vios`, one `vios_l2`, two VPCS, and one cloud (host) node.
-3. Cable them in the standard pattern: VPCS → switch → router → cloud.
-4. Set **every** node's hostname and put the golden baseline config on the router
-   and switch (from `configs/golden-configs/`).
-5. Do not start the nodes. This project is a source of pre-configured nodes, not
-   a running lab.
-6. Save.
+The template kept in `~/GNS3/projects/` is:
+
+| Node | Template | Role | Cabled to |
+|---|---|---|---|
+| `PC1` | VPCS | client | `SW1` Ethernet1 |
+| `PC2` | VPCS | client | `SW1` Ethernet2 |
+| `HOST` | Docker (`alpine:3.20`) | server placeholder | `SW1` Ethernet0 |
+| `SW1` | vios_l2 | access switch | `R1` GigabitEthernet0/0 |
+| `R1` | vios | router / gateway | `SW1` and `CLOUD` |
+| `CLOUD` | Cloud (host) | uplink / NAT to the host | `R1` GigabitEthernet0/1 |
+
+Cabling follows the standing convention — **VPCS → switch → router → cloud** —
+with the Docker host on the lowest free switch port.
+
+How to build or rebuild it:
+
+1. New project, name it exactly `Lab Template`.
+2. Add the six nodes above from the existing templates.
+3. Cable them exactly as the table says, and give every node the name shown.
+   The switch is a 4-port GNS3 switch, so all four ports are used.
+4. Do **not** leave the nodes running. This project is a source of pre-wired
+   nodes, not a running lab. Baselines are applied per lab from
+   `configs/golden-configs/` (the template is wiring only, not configuration).
+5. Save, then close the project.
 
 To start a new lab: duplicate the template project, rename it to `lab-NN-name`,
 and extend it. The IP plan convention still applies — lowest port to the LAN,
@@ -176,3 +192,23 @@ export is the thing worth keeping.
    is the topology; the config is the knowledge.
 5. **Never commit images, keys or `project-files/`.** `.gitignore` already
    covers this, but check `git status` before every commit.
+
+### Keeping the project list clean
+
+Practice projects pile up fast. This lab's list once held **32 projects** —
+unnamed drafts, `*-1` duplicates GNS3 creates on a name clash, empty projects and
+one corrupt project that could not even be deleted through the GUI. The list
+should hold two things and little else:
+
+| Keep | Delete |
+|---|---|
+| The active lab project, named `lab-NN-name` | Empty projects (0 nodes) — there is no topology to lose |
+| `Lab Template` | Exact duplicates (`*-1`) |
+| A finished lab until it is exported and committed | Broken or unwired projects (no links) |
+| | Finished labs after their export + configs are committed |
+
+**Export before deleting.** A project is disposable only once its exported
+topology, configs and captures are committed. If a project refuses to delete
+(corrupt internal data), delete its folder under `~/GNS3/projects/` directly —
+the local controller re-scans that directory on the next start, and the entry
+then clears.

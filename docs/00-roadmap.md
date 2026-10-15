@@ -24,12 +24,18 @@ start in five minutes instead of an hour.
 - [x] Lab guide template
 - [x] Reference library (setup, troubleshooting method, cheatsheets, monitoring, glossary)
 - [x] Git remote configured and first push
-- [ ] GNS3 project cleanup: rename projects to `lab-NN-name`, delete empty and duplicate ones
-- [ ] Build a `Lab Template` GNS3 project (vios + vios_l2 + VPCS + Docker host, pre-cabled)
-- [ ] Verify one full round trip: template → lab → export → commit
+- [x] GNS3 project cleanup: one project per lab; empty, duplicate and junk
+      projects removed (32 → 2: `Lab Template` + the active lab)
+- [x] Build a `Lab Template` GNS3 project (vios + vios_l2 + 2× VPCS + Docker
+      host + cloud, pre-cabled)
+- [x] Verify one full round trip: template → lab → export → commit
+      (`topology/lab-05-network-management.gns3project`)
 
 **Exit criterion:** a new lab can be started from the template, built, verified,
 exported and committed without any setup work or improvisation.
+
+**Status: complete** — the GNS3 project list is clean (2 projects), the `Lab
+Template` is pre-cabled, and lab 05 was exported through the full round trip.
 
 ---
 
@@ -131,3 +137,4 @@ the response follows a written runbook.
 | 2026-10-14 | Lab 01 (Basic LAN) built, verified, captured, Gi0/1 shutdown fault injected and fixed |
 | 2026-10-14 | Lab 02 (Router + 2 LANs) built, verified, captured, Gi0/1 shutdown fault injected and fixed |
 | 2026-10-15 | Lab 05 (Network Management) built, verified, captured, four faults injected and fixed |
+| 2026-10-15 | Phase 0 closed out: GNS3 project list cleaned (32 → 2), `Lab Template` rebuilt pre-cabled, lab 05 exported to `topology/` |

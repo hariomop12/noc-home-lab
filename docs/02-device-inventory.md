@@ -88,14 +88,16 @@ Discipline that keeps this working:
 
 One-time work, per machine.
 
-- [ ] `vios` and `vios_l2` templates use `qemu-system-x86_64` with `-enable-kvm`
-- [ ] Console type `telnet`, console port allocation automatic
-- [ ] Adapters per template: 4 for `vios`, matching GNS3's default slot layout
-- [ ] Memory per node: 512 MB for `vios`, 512 MB for `vios_l2`
-- [ ] `vios_l2` boot tested once in isolation before being used in a real lab
-- [ ] Docker template present with console type `telnet`
-- [ ] VPCS template present
-- [ ] All Zabbix images already pulled locally
-- [ ] One `Lab Template` project built containing these nodes as templates only
+- [x] `vios` and `vios_l2` templates use `qemu-system-x86_64` with `-enable-kvm`
+- [x] Console type `telnet`, console port allocation automatic
+- [x] Adapters per template: 4 for `vios`, matching GNS3's default slot layout
+- [x] Memory per node: 512 MB for `vios`, 512 MB for `vios_l2`
+- [x] `vios_l2` boot tested once in isolation before being used in a real lab
+- [x] Docker templates present with console type `telnet` (only `SRV-DNS` uses
+      `none` — its image gives no interactive shell by design)
+- [x] VPCS template present
+- [x] All Zabbix images already pulled locally
+      (`zabbix-server-pgsql`, `zabbix-web-nginx-pgsql`, `zabbix-agent2`, 7.0)
+- [x] One `Lab Template` project built containing these nodes as templates only
 
 Details and screenshots-level instructions: [03-gns3-setup.md](03-gns3-setup.md).

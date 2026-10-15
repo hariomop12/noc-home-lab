@@ -52,6 +52,9 @@ configs/
 └── lab-04-dhcp-dns-http/
     ├── R1.cfg
     └── SW1.cfg
+└── lab-05-network-management/
+    ├── R1.cfg
+    └── SW1.cfg
 ```
 
 `configs/lab-NN/` appears when the first lab is completed. It does not need to

@@ -45,7 +45,7 @@ One concept per lab, 45-90 minutes, always ending with a broken thing to fix.
       and router-on-a-stick subinterfaces. Break the trunk and diagnose it.
 - [x] **Lab 04 — DHCP + DNS + HTTP.** dnsmasq and nginx as containers. Capture a
       full DORA exchange, a DNS query, and an HTTP request over TCP.
-- [ ] **Lab 05 — Network Management.** SSH hardening, NTP, central syslog, SNMP
+- [x] **Lab 05 — Network Management.** SSH hardening, NTP, central syslog, SNMP
       polling. First time the lab produces telemetry instead of just packets.
 
 **Exit criterion:** a micro lab can be designed, built, verified, captured,
@@ -130,3 +130,4 @@ the response follows a written runbook.
 | 2026-10-13 | Lab 04 (DHCP + DNS + HTTP) built, verified, captured, `ip helper-address` fault injected and fixed |
 | 2026-10-14 | Lab 01 (Basic LAN) built, verified, captured, Gi0/1 shutdown fault injected and fixed |
 | 2026-10-14 | Lab 02 (Router + 2 LANs) built, verified, captured, Gi0/1 shutdown fault injected and fixed |
+| 2026-10-15 | Lab 05 (Network Management) built, verified, captured, four faults injected and fixed |

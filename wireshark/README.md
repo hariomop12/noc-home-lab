@@ -24,6 +24,7 @@ lab-NN-name-<what>.pcapng
 | `lab-03-vlan-trunk-8021q.pcapng` | Lab 03, tagged frames on the trunk |
 | `lab-04-dhcp-dns-http-dora.pcapng` | Lab 04, the full DHCP exchange (relayed, server side) |
 | `lab-04-dhcp-dns-http-web.pcapng` | Lab 04, DNS resolution then HTTP over TCP |
+| `lab-05-network-management-mgmt.pcapng` | Lab 05, SSH + NTP + syslog + SNMP on one link |
 
 The lab number and the link name come first so that sorting the folder groups
 captures by lab automatically.

@@ -49,7 +49,7 @@ The reasoning behind the ordering is in [../docs/00-roadmap.md](../docs/00-roadm
 
 | # | Lab | Level | Time | Skills | Status |
 |---|---|---|---|---|---|
-| 06 | Small Enterprise HQ | combo | 2-3 days | Requirements → design → build → verify, inter-VLAN, OSPF, ACLs, DHCP relay | not-started |
+| 06 | [Small Enterprise HQ](../docs/designs/hq-design.md) | combo | 2-3 days | Requirements → design → build → verify, inter-VLAN, OSPF, ACLs, DHCP relay | in-progress |
 | 07 | Branch + WAN + NAT | combo | 2 days | WAN technologies, OSPF convergence, NAT/PAT, default route, link failure | not-started |
 | 08 | Redundancy | complex | 1 day | HSRP, OSPF tuning, STP root control, convergence measurement | not-started |
 | 09 | Full NOC | complex | 2-3 days | Zabbix, SNMP polling, central syslog, alert triage, failover drill | not-started |

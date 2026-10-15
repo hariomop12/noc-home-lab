@@ -138,3 +138,4 @@ the response follows a written runbook.
 | 2026-10-14 | Lab 02 (Router + 2 LANs) built, verified, captured, Gi0/1 shutdown fault injected and fixed |
 | 2026-10-15 | Lab 05 (Network Management) built, verified, captured, four faults injected and fixed |
 | 2026-10-15 | Phase 0 closed out: GNS3 project list cleaned (32 → 2), `Lab Template` rebuilt pre-cabled, lab 05 exported to `topology/` |
+| 2026-10-15 | Lab 06 design document drafted (`docs/designs/hq-design.md`) — topology, VLANs, addressing, ports, routing, security, verification; DD-1..DD-5 pending review |

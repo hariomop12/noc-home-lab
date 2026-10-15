@@ -16,7 +16,7 @@ subnet, this document is updated first — never the lab on its own.
 
 | Purpose | Subnet | Notes |
 |---|---|---|
-| HQ site | `10.10.0.0/16` | All HQ VLANs live here |
+| HQ site | `10.10.0.0/16` | HQ user and management VLANs |
 | Branch 1 | `10.20.0.0/16` | BR1 |
 | Branch 2 | `10.30.0.0/16` | BR2 |
 | Servers / DC | `10.100.0.0/16` | Container-hosted services |
@@ -68,8 +68,14 @@ usable addresses — correct for a point-to-point link, and a good reminder of w
 | 10 | HR | `10.10.10.0/24` | `10.10.10.1` | `.100` – `.200` |
 | 20 | SALES | `10.10.20.0/24` | `10.10.20.1` | `.100` – `.200` |
 | 30 | IT | `10.10.30.0/24` | `10.10.30.1` | `.100` – `.200` |
-| 40 | SERVERS | `10.10.40.0/24` | `10.10.40.1` | static only |
+| 40 | SERVERS | `10.100.0.0/24` | `10.100.0.1` | static only |
 | 99 | MGMT | `10.10.99.0/24` | `10.10.99.1` | static only |
+
+VLAN 40 is addressed out of the **Servers / DC** supernet (`10.100.0.0/16`), not
+out of `10.10.0.0/16`. Server addresses are deliberately site-independent — the
+same `10.100.0.x` services serve HQ today and a branch in Lab 07 — so they live
+in their own block rather than inside the HQ range. See
+[designs/hq-design.md](designs/hq-design.md), decision DD-1.
 
 **Within each /24, the pattern is always the same:**
 

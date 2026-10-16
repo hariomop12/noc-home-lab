@@ -546,3 +546,21 @@ Build notes worth keeping for the guide:
   adjacency forms) and then moves to its own WAN once the ISP is a neighbour.
 - PC5's address is a manual VPCS setting, so it does not survive a restart. The
   DHCP scope in section 11 replaces it.
+- SRV-NET shipped with the `web:lab` image default (`LAB_IP=10.100.0.12/24`,
+  `LAB_GW=10.100.0.1`) because the node's Environment was never set, so the
+  simulated internet did not exist until it was overridden to `200.1.1.10/24` with
+  gateway `200.1.1.1`.
+
+### Bringing the lab back up
+
+| Step | Time |
+|---|---|
+| Open GNS3, open `lab-07-branch-wan` | 1 min |
+| Start all nodes — start the routers and switches first; `vios_l2` is the slowest to boot (~4–5 min) | 5 min |
+| Check: R1 and R2 `show ip ospf neighbor` = 2 FULL each, PC1 `ip dhcp` gets a lease | 1 min |
+| Re-apply PC5's address (`ip 10.20.10.100/24 10.20.10.1`) until the DHCP scope exists | 1 min |
+| Resume at the NAT step above | — |
+
+If a device answers with a factory prompt instead of its hostname, it did not
+write its configuration before shutdown — restore it from `configs/` following
+`configs/README.md`.

@@ -1,13 +1,13 @@
 ---
 tags: [homelab, design, wan, nat, ospf, branch, lab-07]
-status: draft
+status: agreed
 ---
 
 # Lab 07 — Branch + WAN + NAT (Phase 3 design)
 
 > This is the design for the next lab, written before anything is built. It is the
-> plan: what we build, why, and how each claim gets proved. Nothing here has been
-> configured yet.
+> plan: what we build, why, and how each claim gets proved. The open questions in
+> section 18 have been answered; the build starts from there.
 
 ---
 
@@ -17,9 +17,10 @@ The company opened a second site. **HQ** is the site built in Lab 06. **BR1** is
 small branch office: 20–30 users, one switch, one router, and no servers of its
 own — the branch uses HQ's DNS, DHCP, syslog and NTP over the WAN.
 
-Both sites buy their internet from the same ISP. The link to the ISP is the
-**primary path**, and there is a direct inter-site link between the two routers
-that must take over if the primary fails.
+Both sites buy their internet from the same ISP, and there is also a direct
+inter-site link between the two routers. Site-to-site traffic prefers that direct
+link (one hop, not billed); the ISP path is its backup. For internet traffic each
+site uses its own ISP link first.
 
 ---
 
@@ -37,9 +38,12 @@ side already has:
 | Management plane | SSH, NTP, syslog, SNMP on R1, ISP, SW1, SW2 |
 | NAT | **none** — Lab 06 never left the simulated network |
 
-Lab 07 starts by importing that export and renaming the project
-`lab-07-branch-wan`. That is deliberate: it re-tests the Lab 06 export, and it
-means the branch is added to a working HQ instead of rebuilding one.
+Lab 07 reuses it directly: the live `lab-06-hq` project is **renamed**
+`lab-07-branch-wan` and the branch is added to it, so the branch lands on a
+working HQ instead of a rebuilt one. The Lab 06 export in `topology/` stays as it
+is — that archive is the permanent record of the lab, so renaming the working
+copy loses nothing. (Re-importing the archive is not part of this lab. It gets
+tested for free when Lab 08 imports the Lab 07 export.)
 
 ---
 
@@ -63,11 +67,14 @@ Written as capability statements, not as commands.
 
 Explicitly **not** in this lab, so the scope stays two days:
 
-- IPv6. The IP plan reserves `2001:db8::/32` and says "Phase 3 onwards", but this
-  lab is full without it. It belongs in its own lab (see the open questions).
+- IPv6. The IP plan reserves `2001:db8::/32`, but this lab stays IPv4 only. IPv6
+  belongs in its own lab.
 - HSRP / first-hop redundancy. That is Lab 08.
 - Zabbix. Monitoring is still "a poll answers and a log line arrives". Lab 09.
-- NAT64, GRE, IPsec, QoS.
+- Publishing internal servers with static NAT (port forwarding), and an inbound
+  ACL on the ISP-facing interface. NAT overload is the only edge treatment here;
+  hardening the edge is a later conversation.
+- NAT64, GRE, IPsec, QoS, redistribution, policy routing.
 
 ---
 
@@ -82,13 +89,13 @@ Explicitly **not** in this lab, so the scope stays two days:
          │   ISP    │  Lo0 100.64.0.1/32                      │
          └─┬──────┬─┘                                          │
    Gi0/0   │      │  Gi0/2                                     │
- 10.0.0.14 │      │ 10.0.0.18                  ═══ primary path
-           │      │                            ┈┈┈ backup path
+ 10.0.0.14 │      │ 10.0.0.18      ═══ site-to-site primary (transit)
+           │      │                ┈┈┈ site-to-site backup (via ISP)
    Gi0/1   │      │ Gi0/1
  10.0.0.13 │      │ 10.0.0.17
       ┌────┴───┐  │  ┌────────┐
-      │   R1   ├──┈┈┈┤   R2   │   Gi0/2 ─ Gi0/2 = 10.0.0.1/30 ─ 10.0.0.2/30
-      │  HQ    │     │  BR1   │   (transit, primary for site-to-site)
+      │   R1   ├══╪══┤   R2   │   Gi0/2 ─ Gi0/2 = 10.0.0.1/30 ─ 10.0.0.2/30
+      │  HQ    │     │  BR1   │   (transit, preferred for site-to-site)
       └───┬────┘     └───┬────┘
           │ Gi0/0        │ Gi0/0
           │ trunk        │ trunk
@@ -248,13 +255,12 @@ Points that matter:
   for internal traffic and silently breaks the internet — the subtlety the drill
   is designed to expose.
 
-### Stretch (only if time allows)
+### Not in scope
 
-Publish HQ's web server from the outside with a static PAT entry
-(`ip nat inside source static tcp 10.100.0.12 80 <r1-wan> 8080`), then fetch
-`http://<r1-wan>:8080` from SRV-NET. It is the same translation table read in the
-other direction, and it needs an inbound ACL to be safe — a good conversation, not
-a required deliverable.
+Publishing HQ's web server to the outside with a static PAT entry is the same
+translation table read in the other direction, and it is a good conversation — but
+it needs an inbound ACL to be safe, and that edges into a hardening lab. Skipped
+here (see section 4).
 
 ---
 
@@ -362,7 +368,6 @@ server. Check `giaddr` in a capture before touching `dnsmasq`.
 | Item | Setting | Why |
 |---|---|---|
 | NAT ACL | names only the site supernets | site-to-site traffic must not be translated |
-| ISP-facing inbound ACL (stretch) | permit return traffic and ICMP, deny the rest | NAT alone gives no inbound protection; returning traffic is allowed by state, unsolicited is not |
 | VTY | SSH v2, `MGMT-ACCESS`, `deny any log` | a blocked login should be a log line |
 | Trunks | explicit allowed list, native 999, `nonegotiate` | same as Lab 06 |
 | Unused ports | shutdown, VLAN 999 | same as Lab 06 |
@@ -424,8 +429,9 @@ lights".
 
 ## 16. Order of work
 
-1. **Import `topology/lab-06-hq.gns3project`**, rename the project
-   `lab-07-branch-wan`. Confirm HQ still works before adding anything.
+1. **Rename the existing project.** In GNS3, rename `lab-06-hq` to
+   `lab-07-branch-wan`, open it, and confirm HQ still works before adding
+   anything. Nothing in the topology changes yet.
 2. Add `R2`, `SW3`, `PC5`, `PC6` and `SRV-NET`; cable per section 5.
 3. Configure BR1's L2: VLANs 10 and 99, access ports, trunk to R2, management SVI.
 4. Configure R2: subinterfaces, WAN, transit, loopback, DHCP relay.
@@ -463,14 +469,31 @@ finishes, not during.
 
 ---
 
-## 18. Still open
+## 18. Decisions
 
-| # | Question | Why it matters | Recommendation |
-|---|---|---|---|
-| O1 | Reuse the Lab 06 topology by importing the export, or rebuild HQ from scratch? | RAM and time; also re-tests the Lab 06 export | Import and rename |
-| O2 | IPv6 in this lab or its own? | The IP plan budgets `2001:db8::/32` for "Phase 3 onwards" | Its own lab — this one is already 2 days |
-| O3 | How is the internet simulated: a container behind the ISP, or `ip http server` on an ISP loopback? | Proof quality of the NAT capture | A container — it has a real TCP stack and a real return path problem |
-| O4 | Is the direct transit link the primary HQ↔BR1 path, or the ISP path? | Determines which drill is interesting | Transit primary (one hop, not billed) |
-| O5 | Does the branch get its own DHCP scope on HQ's server, or a local pool? | Realism vs simplicity | HQ scope + relay — the branch has no server |
-| O6 | Is the inbound ACL on the ISP-facing interface in scope? | It is real hardening, but it is extra work | Stretch, only after the rest is verified |
-| O7 | Do we keep the ISP in OSPF, or move to a static customer default? | Real ISPs do not peer OSPF with customers; but Lab 06 already works this way and it makes drill B possible | Keep the ISP in OSPF, and say why in the lab note |
+The questions this design left open, and the answers they got. These are settled;
+the build follows them.
+
+| # | Question | Decision |
+|---|---|---|
+| O1 | Reuse the Lab 06 topology, or rebuild HQ? | **Rename the existing project** to `lab-07-branch-wan` and add the branch to it. No import, no rebuild. The Lab 06 archive in `topology/` is the permanent record of that lab, so renaming the working copy loses nothing. |
+| O2 | IPv6 in this lab or its own? | **No IPv6 here.** IPv4 only; `2001:db8::/32` stays reserved for its own lab. |
+| O3 | How is the internet simulated? | **A container** behind the ISP — a real TCP stack and a real return-path problem to demonstrate NAT against. |
+| O4 | Primary HQ↔BR1 path? | **The transit link** (one hop, not billed). The ISP path is the backup. |
+| O5 | Branch DHCP? | **HQ's server over the WAN**, with a relay on R2. The branch has no server of its own. |
+| O6 | Inbound ACL on the ISP-facing interface? | **Out of scope.** NAT overload is the only edge treatment in this lab. |
+| O7 | Keep the ISP in OSPF? | **Yes.** It is what Lab 06 already does, and it is what makes drill B work. |
+
+**Guiding rule for this lab: keep it simple.** One OSPF area, no redistribution, no
+policy routing, no IPv6, no static NAT. Every extra knob is something that has to
+be explained rather than something learned from.
+
+---
+
+## 19. Status
+
+| Item | State |
+|---|---|
+| Design | agreed (this document) |
+| Build | not started |
+| Next step | rename the project, then cable BR1 (section 16, steps 1–2) |

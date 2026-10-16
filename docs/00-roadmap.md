@@ -90,7 +90,7 @@ diagnosed and fixed.
 The second site. HQ from Phase 2 gains a branch office, a shared ISP and a
 transit link between them.
 
-- [ ] Write the design document first: `docs/designs/branch-wan-design.md`
+- [x] Write the design document first: `docs/designs/branch-wan-design.md`
       — topology, addressing, routing, NAT, failover and the drills that prove it.
 - [ ] Two sites (HQ and BR1) connected through a simulated ISP.
 - [ ] Static routing first, then OSPF. Measure and compare convergence.
@@ -101,8 +101,9 @@ transit link between them.
 **Exit criterion:** a link can be failed and the network recovers without manual
 intervention, and the recovery is explained from the packet level up.
 
-**Status: design written, not built** — `docs/designs/branch-wan-design.md` is the
-plan for Lab 07, including the open questions that need answers before building.
+**Status: design agreed, build starting** — `docs/designs/branch-wan-design.md` is
+the agreed plan for Lab 07; its open questions are answered in section 18 (rename
+the Lab 06 project, IPv4 only, keep the ISP in OSPF, keep it simple).
 
 ---
 

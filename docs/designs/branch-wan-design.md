@@ -173,6 +173,12 @@ failing a link means a human edits a route.
 Stage 1 exists to make Stage 2 feel earned. It is also the comparison baseline: we
 time the same failure under static routing and under OSPF.
 
+**This stage applies to the branch.** Lab 06 already left R1 and the ISP running
+OSPF — that is the HQ design and it is not undone. What Stage 1 changes is how the
+**branch** learns its routes: R2 gets static routes only, and R1 and the ISP get a
+static route for `10.20.0.0/16`. Stage 2 then replaces exactly those branch routes
+with OSPF, which makes the comparison like-for-like without disturbing HQ.
+
 ### Stage 2 — OSPF
 
 | Router | Area | Networks |

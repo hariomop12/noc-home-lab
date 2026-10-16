@@ -29,6 +29,7 @@ lab-NN-name-<what>.pcapng
 | `lab-06-hq-dns-http.pcapng` | Lab 06, DNS resolution then HTTP, seen from the NOC toolbox |
 | `lab-06-hq-trunk-8021q.pcapng` | Lab 06, every frame on the SW1–SW2 trunk carries an 802.1Q tag |
 | `lab-06-hq-management-ntp.pcapng` | Lab 06, NTP on the server segment, plus relayed DHCP |
+| `lab-07-branch-wan-nat.pcapng` | Lab 07, the same request before and after NAT, on the ISP edge |
 
 The lab number and the link name come first so that sorting the folder groups
 captures by lab automatically.

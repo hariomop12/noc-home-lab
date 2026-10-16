@@ -77,10 +77,19 @@ Then, once per lab, prove it the hard way: stop the node, start it again, and
 confirm the hostname and the management addresses are still there. A node that
 comes back as `Router>` costs an hour and teaches nothing new.
 
-Lab 06 is the cautionary tale. Its two routers booted from their saved
-configuration, but its two **switches** did not — the switch startup-config was
-not on disk when it was inspected later. Everything was recovered from the copies
-in `configs/lab-06/`, which is the entire point of this section.
+Lab 06 is the cautionary tale. A **copy** of that project came up with every
+device factory-fresh, because the startup-config lives inside each node's disk and
+a project copy does not carry the disks (table below). The original project was
+untouched — both routers *and* both switches still booted from their saved
+configuration — and it was recovered by renaming it in place.
+
+One trap found while investigating: **reading the disk files is not a way to check
+this.** On `vios_l2` the startup-config is not plain text inside the qcow2, so an
+empty `strings` result proves nothing. Ask the device, not the file:
+
+```
+show running-config | include ^hostname
+```
 
 ## Restoring a config from a backup
 

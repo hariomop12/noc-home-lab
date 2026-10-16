@@ -531,5 +531,18 @@ be explained rather than something learned from.
 | Item | State |
 |---|---|
 | Design | agreed (this document) |
-| Build | not started — the Lab 06 project has been renamed `lab-07-branch-wan` in place, so the HQ side comes back configured |
-| Next step | open the project, confirm HQ is intact (restore SW1/SW2 from `configs/lab-06/` if they are blank), then add BR1 (section 16, step 3) |
+| Build | in progress |
+| Done | HQ intact after the in-place rename (R1 OSPF + default route, SW1/SW2 VLANs, PC1 lease). BR1 added and cabled: R2, SW3, PC5, PC6, SRV-NET. SW3 L2 done (VLAN 10/99/999, trunk to R2, SVI `10.20.99.13`). R2 done (VLAN subinterfaces + DHCP relay, WAN, transit, `Lo0`). Stage 1 static routing verified. Stage 2 OSPF verified: R2 has two neighbours, R1 and the ISP have two each, statics removed, transit preferred, `O*E2 0.0.0.0/0` on both sites. PC5 reaches HQ (`ping 10.100.0.10`, 4.7 ms) |
+| Not done | NAT/PAT, management plane for R2 and SW3, branch DHCP/DNS scope, the four captures, drills A/B/C, the MTU fault, verification table, lab guide |
+| Next step | NAT (section 8): start the capture on ISP `Gi0/1` ↔ SRV-NET, send the pre-NAT traffic, configure PAT on R1 and R2, send the same traffic again, stop the capture |
+
+Build notes worth keeping for the guide:
+
+- The far-end OSPF side is easy to forget: R2 had the process configured and still
+  saw no neighbour, because R1 was missing `no passive-interface GigabitEthernet0/2`
+  and the ISP was missing `network 10.0.0.16 0.0.0.3 area 0`. R2's own
+  `show ip ospf interface brief` was correct the whole time.
+- R2 learns the default from the transit first (it is the only path until the WAN
+  adjacency forms) and then moves to its own WAN once the ISP is a neighbour.
+- PC5's address is a manual VPCS setting, so it does not survive a restart. The
+  DHCP scope in section 11 replaces it.

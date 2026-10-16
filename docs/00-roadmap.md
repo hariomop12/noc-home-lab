@@ -67,16 +67,21 @@ The first lab where no configuration is given. Only a specification.
 > router. The site needs DHCP, DNS, HTTP, SSH, central syslog and NTP. Departments
 > must be separated. Monitoring must be able to see every device.
 
-- [ ] Write the design document before touching GNS3: `docs/designs/hq-design.md`
+- [x] Write the design document before touching GNS3: `docs/designs/hq-design.md`
       — topology, addressing, VLANs, port assignments, routing, security intent.
-- [ ] Build it from your own design, then compare against the design document.
-- [ ] Inter-VLAN routing with OSPF, plus a default route out.
-- [ ] Extended ACLs: Sales cannot reach HR, IT can reach everything.
-- [ ] DHCP relay (`ip helper-address`) with the DHCP server in the SERVERS VLAN.
-- [ ] Prove every requirement with a command or a capture, not an opinion.
+- [x] Build it from your own design, then compare against the design document.
+- [x] Inter-VLAN routing with OSPF, plus a default route out.
+- [x] Extended ACLs: Sales cannot reach HR, IT can reach everything.
+- [x] DHCP relay (`ip helper-address`) with the DHCP server in the SERVERS VLAN.
+- [x] Prove every requirement with a command or a capture, not an opinion.
 
 **Exit criterion:** the site works end to end, every device is visible in
 monitoring, and the design document matches what is actually running.
+
+**Status: complete** — 15 of 15 verification rows pass, four captures and four
+exported configurations are committed, and the exported configs were diffed
+against `docs/designs/hq-design.md`. One fault (ACL entry reordered) injected,
+diagnosed and fixed.
 
 ---
 
@@ -139,3 +144,5 @@ the response follows a written runbook.
 | 2026-10-15 | Lab 05 (Network Management) built, verified, captured, four faults injected and fixed |
 | 2026-10-15 | Phase 0 closed out: GNS3 project list cleaned (32 → 2), `Lab Template` rebuilt pre-cabled, lab 05 exported to `topology/` |
 | 2026-10-15 | Lab 06 design document drafted (`docs/designs/hq-design.md`) — topology, VLANs, addressing, ports, routing, security, verification; DD-1..DD-5 pending review |
+| 2026-10-16 | Lab 06 (Small Enterprise HQ) built from the design: inter-VLAN router-on-a-stick, OSPF default route via the ISP, DHCP relay, Sales→HR ACL, management plane on all four devices. 15/15 verification rows pass, 4 captures and 4 configs exported, ACL fault injected and fixed. Phase 2 complete |
+| 2026-10-16 | `noc-tools:lab` gained `tftp-hpa`; configs are now exported with `copy running-config tftp://10.100.0.50/<device>.cfg` instead of console copy-paste |

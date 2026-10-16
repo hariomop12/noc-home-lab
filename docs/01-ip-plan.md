@@ -112,6 +112,7 @@ predictable, but a different second octet so summarisation is still possible
 | SRV-SYSLOG | `10.100.0.11` | rsyslog | Central log collector |
 | SRV-WEB | `10.100.0.12` | `nginx:alpine` | HTTP/HTTPS target |
 | SRV-NTP | `10.100.0.13` | chrony | Time source for every device |
+| CLIENT | `10.100.0.50` | `noc-tools:lab` | NOC toolbox: `ssh`, `snmpget`, `dig`, `tcpdump`, `curl` |
 | SRV-ZBX-WEB | `10.100.0.20` | `zabbix-web-nginx-pgsql` | Monitoring frontend |
 | SRV-ZBX-SRV | `10.100.0.21` | `zabbix-server-pgsql` | Polling and triggers |
 | SRV-DB | `10.100.0.22` | `postgres:16-alpine` | Zabbix database |
@@ -127,6 +128,8 @@ Forward zone: `lab.local`
 |---|---|---|
 | `r1.lab.local` | A | `10.255.0.1` |
 | `r2.lab.local` | A | `10.255.0.2` |
+| `sw1.lab.local` | A | `10.10.99.11` |
+| `sw2.lab.local` | A | `10.10.99.12` |
 | `web.lab.local` | A | `10.100.0.12` |
 | `dns.lab.local` | A | `10.100.0.10` |
 | `zabbix.lab.local` | A | `10.100.0.20` |

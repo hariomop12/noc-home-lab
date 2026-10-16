@@ -23,6 +23,7 @@ the topology is the artefact, the guide is the knowledge.
 | File | Lab | Nodes | Notes |
 |---|---|---|---|
 | `lab-05-network-management.gns3project` | 05 | 7 — R1, SW1, SW2, PC1, CLIENT, SRV-SYSLOG, SRV-NTP | ~205 KB; exported with `include_images=false`, so no IOS/QCow2 images are bundled |
+| `lab-06-hq.gns3project` | 06 | 14 — R1, ISP, SW1, SW2, PC1–PC4, SRV-SEG, SRV-DNS, SRV-WEB, SRV-SYSLOG, SRV-NTP, CLIENT | ~387 KB; exported with `include_images=false`. The four IOS nodes carry their saved startup-config, so the site comes back exactly as verified |
 
 The export is produced by GNS3 itself, which guarantees it re-imports cleanly:
 

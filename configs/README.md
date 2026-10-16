@@ -27,10 +27,41 @@ Either:
 
 - Right-click the node → **Export config**, or
 - On the device console: `show running-config`, then copy the output into
-  `configs/lab-NN/<device>.cfg`.
+  `configs/lab-NN/<device>.cfg`, or
+- Push it over TFTP from the `CLIENT` (`noc-tools:lab`) container — see below.
 
 Export **after** verification, not before. A config exported mid-debugging is a
 record of a mistake.
+
+## Backing up configs over TFTP
+
+The `noc-tools:lab` container carries `tftp-hpa`, so a device can hand its own
+configuration to it. No console copy-paste, and the procedure is the same for
+every device.
+
+On the **CLIENT** console, start the server once:
+
+```sh
+mkdir -p /tftp
+in.tftpd -l -c -s /tftp -u root &
+```
+
+On **each device**:
+
+```
+copy running-config tftp://10.100.0.50/<device>.cfg
+```
+
+Accept the default destination filename when prompted. The files land in
+`/tftp` inside the container; copy them out with:
+
+```sh
+docker cp GNS3.CLIENT-1.<project-id>:/tftp/. configs/lab-NN/
+```
+
+`-c` allows the upload to create a file, and `-s` confines the server to
+`/tftp`, so a device cannot write anywhere else. This is the same job the
+Phase 5 `backup-configs.yml` playbook will do.
 
 ## Folder layout
 

@@ -32,7 +32,7 @@ available through GNS3 because each service runs in the foreground.
 
 | Image | Tag | Address in the IP plan | Purpose |
 |---|---|---|---|
-| noc-tools | `noc-tools:lab` | on demand | Aladdin's cave: tcpdump, nmap, net-snmp, mtr, dig, iperf3 |
+| noc-tools | `noc-tools:lab` | on demand | Aladdin's cave: ssh, tftp, tcpdump, nmap, net-snmp, mtr, dig, iperf3 |
 | syslog | `syslog:lab` | `10.100.0.10` → see note | Central syslog collector on UDP/TCP 514 |
 | dnsmasq | `dnsmasq:lab` | `10.100.0.10` | DHCP + DNS for the lab |
 | web | `web:lab` | `10.100.0.12` | nginx HTTP/HTTPS target for client tests |

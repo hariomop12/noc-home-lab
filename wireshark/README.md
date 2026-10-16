@@ -25,6 +25,10 @@ lab-NN-name-<what>.pcapng
 | `lab-04-dhcp-dns-http-dora.pcapng` | Lab 04, the full DHCP exchange (relayed, server side) |
 | `lab-04-dhcp-dns-http-web.pcapng` | Lab 04, DNS resolution then HTTP over TCP |
 | `lab-05-network-management-mgmt.pcapng` | Lab 05, SSH + NTP + syslog + SNMP on one link |
+| `lab-06-hq-dhcp-dora-relay.pcapng` | Lab 06, DHCP DORA with the relay agent address (`giaddr`) |
+| `lab-06-hq-dns-http.pcapng` | Lab 06, DNS resolution then HTTP, seen from the NOC toolbox |
+| `lab-06-hq-trunk-8021q.pcapng` | Lab 06, every frame on the SW1–SW2 trunk carries an 802.1Q tag |
+| `lab-06-hq-management-ntp.pcapng` | Lab 06, NTP on the server segment, plus relayed DHCP |
 
 The lab number and the link name come first so that sorting the folder groups
 captures by lab automatically.

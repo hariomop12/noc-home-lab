@@ -103,7 +103,8 @@ unmanaged, needs no config, and is not counted as one of the "two switches".
 
 The block is an **extended ACL applied on the Sales subinterface
 (`Gi0/0.20 in`)**. Dropping the packet at the source's gateway means it never
-crosses the core, and the ACL counters give us clean proof for R9.
+crosses the core, and the ACL counters give us clean proof that Sales cannot
+reach HR.
 
 ---
 
@@ -137,14 +138,14 @@ crosses the core, and the ACL counters give us clean proof for R9.
                         └──┬────┬─────┘
              Gi0/1 VLAN30  │    │  Gi0/2 VLAN30 / Gi0/3 VLAN40
                     ┌──────┘    └──────┬─────────────────┐
-                  ┌─┴──┐            ┌─┴──┐         ┌────┴───┐
-                  │PC3 │ IT          │PC4 │ IT       │SRV-SEG │ (unmanaged)
-                  └────┘             └────┘          └─┬─┬─┬─┬┘
-                                                       │ │ │ └── SRV-NTP    10.100.0.13
-                                                       │ │ └──── SRV-SYSLOG 10.100.0.11
-                                                       │ └────── SRV-WEB    10.100.0.12
-                                                       └──────── SRV-DNS    10.100.0.10
-                                                                 (DHCP + DNS)
+                  ┌─┴──┐            ┌─┴──┐           ┌─────┴────┐
+                  │PC3 │ IT          │PC4 │ IT       │SRV-SEG   │ (unmanaged)
+                  └────┘             └────┘          └─┬─┬─┬─┬─┬┘
+                                                       │ │ │ │ └── SRV-NTP    10.100.0.13
+                                                       │ │ │ └──── SRV-SYSLOG 10.100.0.11
+                                                       │ │ └────── SRV-WEB    10.100.0.12
+                                                       │ └──────── SRV-DNS    10.100.0.10  (DHCP + DNS)
+                                                       └────────── CLIENT     10.100.0.50  (noc-tools)
 ```
 
 ---
@@ -166,10 +167,11 @@ crosses the core, and the ACL counters give us clean proof for R9.
 | SRV-SYSLOG | Docker `syslog:lab` | Log collector | `10.100.0.11` |
 | SRV-WEB | Docker `web:lab` | Web page | `10.100.0.12` |
 | SRV-NTP | Docker `ntp:lab` | Time source | `10.100.0.13` |
+| CLIENT | Docker `noc-tools:lab` | NOC toolbox — runs the SSH and monitoring checks | `10.100.0.50` |
 
-Devices that monitoring must see: **R1, ISP, SW1, SW2** — all four (R10). A
-`CLIENT` (`noc-tools:lab`) container can be added on `SRV-SEG` to run the polls
-from, or we can run them from `SRV-SYSLOG`.
+Devices that monitoring must see: **R1, ISP, SW1, SW2** — all four. The polls
+run from `CLIENT` (`noc-tools:lab`, `10.100.0.50`) on `SRV-SEG`. The same box
+covers the SSH test and the NOC tickets later.
 
 ---
 
@@ -265,7 +267,7 @@ Rule: the **lowest** port faces the LAN, the **highest** port faces the uplink.
 | 3 | SRV-WEB `10.100.0.12` |
 | 4 | SRV-SYSLOG `10.100.0.11` |
 | 5 | SRV-NTP `10.100.0.13` |
-| 6 | `CLIENT` `10.100.0.50` (optional, for the R10 poll test) |
+| 6 | `CLIENT` `10.100.0.50` (optional, for the monitoring poll test) |
 
 ### ISP (4 ports)
 
@@ -323,9 +325,10 @@ Rule: the **lowest** port faces the LAN, the **highest** port faces the uplink.
 
 ### Why not just type a static default on R1
 
-A typed `ip route 0.0.0.0 0.0.0.0 10.0.0.14` would also pass R11, but it proves
-nothing about OSPF. Learning it keeps R3–R11 honest and gives Phase 3 something
-to compare convergence against.
+A typed `ip route 0.0.0.0 0.0.0.0 10.0.0.14` would also pass the check, but it
+proves nothing about OSPF. Learning the default route keeps the DHCP-to-
+monitoring checks honest and gives Phase 3 something to compare convergence
+against.
 
 ---
 
@@ -390,6 +393,22 @@ For **R1, ISP, SW1, SW2**:
 | NTP | `ntp server 10.100.0.13` |
 | SSH | v2 only, `login local`, MGMT-ACCESS |
 
+### The switch default route (vios_l2 gotcha)
+
+`vios_l2` boots with `ip routing` enabled. While routing is on, `ip default-gateway`
+is stored in the config but **ignored** — the routing table keeps
+`Gateway of last resort is not set`, so SW1 and SW2 can never reach NTP, syslog or a
+poller, and their own replies never leave the switch. `ip route` is only accepted
+when routing is enabled, so the working config is an explicit static default:
+
+```
+ip route 0.0.0.0 0.0.0.0 10.10.99.1
+```
+
+Symptom if it is missing: `ping 10.100.0.13` from a switch fails while
+`ping 10.10.99.1` works, and a client's SSH to `10.10.99.11` is denied *and logged*
+(the request arrives) but its ICMP echo never gets a reply.
+
 Zabbix itself is Phase 5. In Lab 06 the proof is simple: a poll that answers and
 a log line that arrives.
 
@@ -402,9 +421,9 @@ a log line that arrives.
 | R1 | 3 VLANs, 3 pools of 100 | `show vlan brief`; pool file on SRV-DNS |
 | R2 | 2 managed switches + 1 router | `show cdp neighbors` on R1 shows SW1; diagram has 2 switches |
 | R3 | DHCP works | `ip dhcp` in VPCS; capture DORA with relay (`giaddr 10.10.10.1`) |
-| R4 | DNS | `nslookup web.lab.local` from a PC; capture the query and reply |
-| R5 | HTTP | `wget` from PC1, PC2, PC3 to `10.100.0.12`; capture the TCP handshake |
-| R6 | SSH | `ssh admin@10.10.99.11` works from PC3, fails from PC2 |
+| R4 | DNS | `dig web.lab.local @10.100.0.10` from the NOC toolbox; capture the query and the reply |
+| R5 | HTTP | `wget -qO- http://10.100.0.12/` and `curl -I http://10.100.0.12/` from the NOC toolbox; capture `GET /`, the TCP handshake and `200 OK` |
+| R6 | SSH | `ssh -l admin 10.10.99.11` from R1 succeeds; the same command from the NOC toolbox (VLAN 40) is denied **and logged** |
 | R7 | Syslog | bounce a spare port; show the line on SRV-SYSLOG |
 | R8 | NTP | `show ntp status` = synchronised, on all four devices |
 | R9a | Sales→HR blocked | PC2 ping PC1 fails; `show ip access-lists SALES-TO-HR` counters rise |
@@ -413,6 +432,11 @@ a log line that arrives.
 | R11 | OSPF default | `show ip ospf neighbor` = FULL; `show ip route ospf` = `O*E2 0.0.0.0/0` |
 
 Rule: **a requirement is only done when the command or capture above says so.**
+
+One practical note: VPCS has no DNS, HTTP or SSH client at all. The DNS, HTTP and
+SSH checks therefore run from the `CLIENT` container (`noc-tools:lab`,
+`10.100.0.50`), except the SSH success case, which has to come from a device
+inside the management VLAN — so it runs from R1.
 
 ---
 
@@ -454,8 +478,8 @@ Rule: **a requirement is only done when the command or capture above says so.**
 |---|---|---|
 | O1 | ~~Confirm DD-1~~ — confirmed 2026-10-15; `docs/01-ip-plan.md` updated | done |
 | O2 | ~~Check how `dnsmasq:lab` gets its config~~ — resolved: `dnsmasq.conf` is baked into the image, the address comes from `LAB_IP`/`LAB_GW`, VLAN 20 + 30 ranges are now live | done |
-| O3 | Decide: add the `CLIENT` container for the R10 poll test, or run polls from `SRV-SYSLOG` | build |
-| O4 | Decide: is PC4 a second IT host, or a spare we re-patch per test | design |
+| O3 | ~~Decide: the `CLIENT` container for the R10 poll test, or run polls from `SRV-SYSLOG`~~ — resolved: `CLIENT` (`noc-tools:lab`, `10.100.0.50`) added on `SRV-SEG`; it also covers the SSH test and the tickets | done |
+| O4 | ~~Decide: is PC4 a second IT host, or a spare we re-patch per test~~ — resolved: PC4 is a second IT host on VLAN 30 | done |
 
 ---
 

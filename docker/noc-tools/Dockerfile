@@ -13,7 +13,9 @@ RUN apk add --no-cache \
       net-snmp-tools \
       nmap \
       nmap-scripts \
+      openssh-client \
       tcpdump \
+      tftp-hpa \
       traceroute \
       vim
 

@@ -205,9 +205,9 @@ from, or we can run them from `SRV-SYSLOG`.
 
 | Pool | Range | Lease |
 |---|---|---|
-| VLAN10-HR | `10.10.10.100` – `10.10.10.200` | 8 h |
-| VLAN20-SALES | `10.10.20.100` – `10.10.20.200` | 8 h |
-| VLAN30-IT | `10.10.30.100` – `10.10.30.200` | 8 h |
+| VLAN10-HR | `10.10.10.100` – `10.10.10.200` | 12 h |
+| VLAN20-SALES | `10.10.20.100` – `10.10.20.200` | 12 h |
+| VLAN30-IT | `10.10.30.100` – `10.10.30.200` | 12 h |
 
 Each pool hands out: gateway = that VLAN's `.1`, DNS = `10.100.0.10`,
 domain `lab.local`, NTP = `10.100.0.13`.
@@ -453,7 +453,7 @@ Rule: **a requirement is only done when the command or capture above says so.**
 | # | Item | Who |
 |---|---|---|
 | O1 | ~~Confirm DD-1~~ — confirmed 2026-10-15; `docs/01-ip-plan.md` updated | done |
-| O2 | Check how `dnsmasq:lab` gets its config (`LAB_IP`/`LAB_GW` + `dnsmasq.conf`) and where the lease file is | build |
+| O2 | ~~Check how `dnsmasq:lab` gets its config~~ — resolved: `dnsmasq.conf` is baked into the image, the address comes from `LAB_IP`/`LAB_GW`, VLAN 20 + 30 ranges are now live | done |
 | O3 | Decide: add the `CLIENT` container for the R10 poll test, or run polls from `SRV-SYSLOG` | build |
 | O4 | Decide: is PC4 a second IT host, or a spare we re-patch per test | design |
 

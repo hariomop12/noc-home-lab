@@ -214,17 +214,30 @@ is why Stage 1 is short and Stage 2 is the real build.
 
 ## 8. NAT design
 
-### The problem, demonstrated before it is solved
+### The evidence, captured before it is solved
 
-SRV-NET has a default route to `200.1.1.1`, and no route to `10.0.0.0/8` — exactly
-like the real internet, which does not carry private addresses. So:
+The "internet" here is one container behind the ISP, and the ISP sits in the same
+OSPF domain as both sites. So a request from a private address **does** come back:
+the simulated internet is permissive on purpose. Worth naming the simplification —
+a real ISP edge filters RFC 1918 source and destination addresses (BCP 38 and
+bogon lists) and would drop this traffic.
 
-1. A PC at HQ opens `http://200.1.1.10`. The request leaves R1 and arrives.
-2. SRV-NET cannot route the reply back to `10.10.10.160`, so there is no reply.
-3. The capture on the ISP↔SRV-NET link shows the request going out with a private
-   source address, and nothing coming back.
+The "before" step is therefore not a broken ping. It is the evidence of what a real
+ISP would drop: the capture on the ISP↔SRV-NET link shows the request arriving with
+`10.10.10.160` as its **source**, and the reply addressed to `10.10.10.160`. The
+internet was asked to carry private addresses end to end.
 
-Only then is NAT configured. Same request, now translated, now answered.
+Two reasons the demo is built this way:
+
+- A private-address filter at the ISP edge would also break drills B and C: the
+  surviving path has no public address to translate to, so the failover story
+  could not be measured. The permissive internet is what keeps the drills honest.
+- It makes the comparison exact: same request, same link, same capture, before and
+  after. Only the source address changes.
+
+One capture covers both phases: start it, make the request, configure NAT, make the
+request again. The file then contains the private source and the translated source
+side by side, on one clock.
 
 ### Configuration shape
 
@@ -251,11 +264,13 @@ Points that matter:
 - **`overload` is PAT.** Many inside hosts, one outside address, told apart by
   port. The proof is `show ip nat translations` showing two inside locals
   sharing one inside global with different ports.
-- **The NAT ACL scope is deliberate.** It names the site supernets and nothing
-  else. If the transit `/30` were matched, HQ↔BR1 traffic would be translated and
-  the capture would show nonsense. Worse, on the failover path a translated
-  packet would leave R1 with `10.0.0.1` as its source and the reply could come
-  back translated twice. `10.0.0.0/30` and `10.0.0.0/24` are *not* in the list.
+- **The NAT ACL scope is deliberate.** It names the two site supernets and nothing
+  else. If the transit `/30` were matched, HQ↔BR1 traffic would be translated for
+  no reason: site-to-site connectivity would come to depend on NAT, and the
+  capture on the transit would show translated addresses where the design promised
+  plain routing. The direction rule does the rest of the work — NAT only applies
+  from an `ip nat inside` interface to an `ip nat outside` interface, so a packet
+  arriving on the transit and leaving on the WAN is never translated.
 - **`ip nat inside` goes on LAN subinterfaces, `ip nat outside` on the
   ISP-facing interface and on the transit interface.** Site-to-site traffic never
   enters NAT (the ACL excludes it), but the transit must be `outside` so that

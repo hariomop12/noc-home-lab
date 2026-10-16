@@ -197,8 +197,10 @@ Decisions worth stating:
   transit link, so the internet keeps working without a human.
 - **LAN subinterfaces are passive.** No neighbour is expected on a LAN.
 - **The transit link is the preferred HQ↔BR1 path**, not the ISP path. It is one
-  hop instead of two, and it is not billed. Implemented with OSPF cost on the
-  transit link, not with two routing protocols.
+  hop instead of two, and it is not billed. This needs no tuning: every link has
+  the same default OSPF cost, so the transit wins on hop count (cost 1 against
+  cost 2) purely because of the topology. A protocol preference would not be
+  needed either — both paths are OSPF, which is the point.
 
 ### Why not static for everything
 
@@ -276,7 +278,7 @@ here (see section 4).
 
 | Traffic | Primary | Backup |
 |---|---|---|
-| HQ ↔ BR1 | transit `R1 Gi0/2 ↔ R2 Gi0/2` (cost 10) | via ISP: R1 → ISP → R2 |
+| HQ ↔ BR1 | transit `R1 Gi0/2 ↔ R2 Gi0/2` (one hop) | via ISP: R1 → ISP → R2 (two hops) |
 | Either site → internet | own WAN link to the ISP | transit, then the other site's WAN link |
 
 ### Drills
@@ -456,7 +458,8 @@ lights".
 6. **Stage 1 — static routing.** Defaults on R1/R2, routes on the ISP. Verify both
    sites can reach each other and the internet. Record `show ip route`.
 7. **Stage 2 — OSPF.** Replace the static routes with OSPF, keep the ISP as the
-   default originator, set the transit cost. Confirm the same reachability.
+   default originator. Confirm the same reachability, then confirm that the
+   transit is chosen for HQ↔BR1 and that the default still arrives from the ISP.
 8. NAT: demonstrate the failure first (section 8), then configure PAT on R1 and
    R2, then prove two inside hosts share one outside address.
 9. Management plane for R2 and SW3, **including the `MGMT-ACCESS` update on every

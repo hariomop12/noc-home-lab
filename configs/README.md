@@ -63,6 +63,53 @@ docker cp GNS3.CLIENT-1.<project-id>:/tftp/. configs/lab-NN/
 `/tftp`, so a device cannot write anywhere else. This is the same job the
 Phase 5 `backup-configs.yml` playbook will do.
 
+## Proving that a config was actually saved
+
+`write memory` prints `Building configuration... [OK]`, which is not proof that
+the device will boot with that configuration. Check the thing that matters:
+
+```
+show startup-config | include ^hostname
+show startup-config | include ^ip route
+```
+
+Then, once per lab, prove it the hard way: stop the node, start it again, and
+confirm the hostname and the management addresses are still there. A node that
+comes back as `Router>` costs an hour and teaches nothing new.
+
+Lab 06 is the cautionary tale. Its two routers booted from their saved
+configuration, but its two **switches** did not — the switch startup-config was
+not on disk when it was inspected later. Everything was recovered from the copies
+in `configs/lab-06/`, which is the entire point of this section.
+
+## Restoring a config from a backup
+
+Console paste, in this order:
+
+1. `enable`, then `configure terminal`.
+2. Paste the whole file from `configs/lab-NN/<device>.cfg`. The `!` header block
+   is a comment to IOS, so the file can be pasted unedited.
+3. `end`, then `write memory`.
+4. Verify against the design, not against hope: `show ip interface brief`,
+   `show ip route`, `show vlan brief`, and the same checks the lab used when it
+   was first built.
+
+A device that already holds a partial configuration should be cleared first
+(`write erase`, then `reload`, answering **no** to saving) so nothing stale
+survives the paste.
+
+The other half of this section is a GNS3 habit, and it is a real one:
+
+| Action | Effect on node disks |
+|---|---|
+| **Rename** the project | Nothing. Same node IDs, same disks, same saved configs |
+| **Save as** / **Duplicate** the project | New node IDs, **brand-new blank disks** — every device boots factory-fresh |
+
+Copying a topology forwards what is in the project file (nodes, links, ports,
+images). It does *not* forward what is inside each node's disk, and that is where
+the startup-config lives. If a copy is ever needed, copy the project **directory**
+from `~/GNS3/projects/<project-id>/` while GNS3 is closed.
+
 ## Folder layout
 
 ```
@@ -86,6 +133,11 @@ configs/
 └── lab-05-network-management/
     ├── R1.cfg
     └── SW1.cfg
+└── lab-06-hq/
+    ├── R1.cfg
+    ├── ISP.cfg
+    ├── SW1.cfg
+    └── SW2.cfg
 ```
 
 `configs/lab-NN/` appears when the first lab is completed. It does not need to

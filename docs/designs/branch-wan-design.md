@@ -429,26 +429,38 @@ lights".
 
 ## 16. Order of work
 
-1. **Rename the existing project.** In GNS3, rename `lab-06-hq` to
+1. **Rename the existing project, in place.** In GNS3, rename `lab-06-hq` to
    `lab-07-branch-wan`, open it, and confirm HQ still works before adding
    anything. Nothing in the topology changes yet.
-2. Add `R2`, `SW3`, `PC5`, `PC6` and `SRV-NET`; cable per section 5.
-3. Configure BR1's L2: VLANs 10 and 99, access ports, trunk to R2, management SVI.
-4. Configure R2: subinterfaces, WAN, transit, loopback, DHCP relay.
-5. **Stage 1 — static routing.** Defaults on R1/R2, routes on the ISP. Verify both
+
+   Use **Rename**. Not **Save as**, not **Duplicate**: those build a new project
+   with new node IDs and therefore **blank node disks**, so every device boots
+   factory-fresh and the Lab 06 configuration is gone from that copy. The
+   startup-config lives inside each node's disk, and a project copy does not
+   carry it. (If Lab 06 is ever restored by hand, the procedure is in
+   `configs/README.md`.)
+
+2. Confirm the renamed project kept its configuration: R1 and ISP boot with their
+   hostnames, SW1 and SW2 answer `show running-config` with the Lab 06 VLANs. If
+   a switch is blank, restore it from `configs/lab-06/SW1.cfg` / `SW2.cfg` before
+   touching anything else — the branch depends on an HQ that matches the design.
+3. Add `R2`, `SW3`, `PC5`, `PC6` and `SRV-NET`; cable per section 5.
+4. Configure BR1's L2: VLANs 10 and 99, access ports, trunk to R2, management SVI.
+5. Configure R2: subinterfaces, WAN, transit, loopback, DHCP relay.
+6. **Stage 1 — static routing.** Defaults on R1/R2, routes on the ISP. Verify both
    sites can reach each other and the internet. Record `show ip route`.
-6. **Stage 2 — OSPF.** Replace the static routes with OSPF, keep the ISP as the
+7. **Stage 2 — OSPF.** Replace the static routes with OSPF, keep the ISP as the
    default originator, set the transit cost. Confirm the same reachability.
-7. NAT: demonstrate the failure first (section 8), then configure PAT on R1 and
+8. NAT: demonstrate the failure first (section 8), then configure PAT on R1 and
    R2, then prove two inside hosts share one outside address.
-8. Management plane for R2 and SW3, **including the `MGMT-ACCESS` update on every
+9. Management plane for R2 and SW3, **including the `MGMT-ACCESS` update on every
    device**, then confirm syslog and SNMP from the collector.
-9. DHCP/DNS: rebuild `dnsmasq:lab` with the BR1 scope, restart `SRV-DNS`, lease a
-   PC in BR1.
-10. Run the section 13 table. Capture as in section 14.
-11. Drills A, B, C with the timed ping. Tune the timers, re-run, build the table.
-12. Inject fault #1, diagnose it, fix it.
-13. Export configs to `configs/lab-07/`, captures to `wireshark/`, export the
+10. DHCP/DNS: rebuild `dnsmasq:lab` with the BR1 scope, restart `SRV-DNS`, lease a
+    PC in BR1.
+11. Run the section 13 table. Capture as in section 14.
+12. Drills A, B, C with the timed ping. Tune the timers, re-run, build the table.
+13. Inject fault #1, diagnose it, fix it.
+14. Export configs to `configs/lab-07/`, captures to `wireshark/`, export the
     topology, write `labs/lab-07-branch-wan/README.md`, diff running config
     against this document.
 
@@ -495,5 +507,5 @@ be explained rather than something learned from.
 | Item | State |
 |---|---|
 | Design | agreed (this document) |
-| Build | not started |
-| Next step | rename the project, then cable BR1 (section 16, steps 1–2) |
+| Build | not started — the Lab 06 project has been renamed `lab-07-branch-wan` in place, so the HQ side comes back configured |
+| Next step | open the project, confirm HQ is intact (restore SW1/SW2 from `configs/lab-06/` if they are blank), then add BR1 (section 16, step 3) |

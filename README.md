@@ -111,7 +111,7 @@ Step 6 is the step most people skip. Step 6 is the one that gets you hired.
 | 04 | [DHCP + DNS + HTTP](labs/lab-04-dhcp-dns-http/README.md) | micro | 90 min | DHCP DORA, DNS, HTTP, Docker services |
 | 05 | [Network Management](labs/lab-05-network-management/README.md) | micro | 90 min | SSH, NTP, syslog, SNMP |
 | 06 | [Small Enterprise HQ](labs/lab-06-hq/README.md) | combo | 2-3 days | Design, inter-VLAN, OSPF, ACLs, DHCP relay |
-| 07 | Branch + WAN + NAT | combo | 2 days | WAN links, OSPF, NAT/PAT, failover |
+| 07 | [Branch + WAN + NAT](docs/designs/branch-wan-design.md) *(design)* | combo | 2 days | WAN links, OSPF, NAT/PAT, failover |
 | 08 | Redundancy | complex | 1 day | HSRP, OSPF tuning, convergence |
 | 09 | Full NOC | complex | 2-3 days | Zabbix, SNMP, syslog alerts, failover drill |
 

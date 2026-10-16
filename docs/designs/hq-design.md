@@ -258,13 +258,14 @@ Rule: the **lowest** port faces the LAN, the **highest** port faces the uplink.
 
 ### SRV-SEG (unmanaged)
 
-| Port | Host |
+| Port | Goes to |
 |---|---|
-| 1 | SRV-DNS `10.100.0.10` |
-| 2 | SRV-WEB `10.100.0.12` |
-| 3 | SRV-SYSLOG `10.100.0.11` |
-| 4 | SRV-NTP `10.100.0.13` |
-| 5 | `CLIENT` `10.100.0.50` (optional, for the R10 poll test) |
+| 1 | SW2 Gi0/3 (uplink) |
+| 2 | SRV-DNS `10.100.0.10` |
+| 3 | SRV-WEB `10.100.0.12` |
+| 4 | SRV-SYSLOG `10.100.0.11` |
+| 5 | SRV-NTP `10.100.0.13` |
+| 6 | `CLIENT` `10.100.0.50` (optional, for the R10 poll test) |
 
 ### ISP (4 ports)
 

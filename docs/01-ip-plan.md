@@ -104,6 +104,10 @@ Branches use the same VLAN ID numbering as HQ so that the design stays
 predictable, but a different second octet so summarisation is still possible
 (`10.20.0.0/16` is BR1 in one line).
 
+A branch has no server of its own. User VLANs take their leases from `SRV-DNS` at
+HQ (`.100` – `.200`), relayed by the site router — BR1's `R2 Gi0/0.10` carries
+`ip helper-address 10.100.0.10`, and dnsmasq selects the range from `giaddr`.
+
 ## Servers and containers
 
 | Host | Address | Runs | Role |
@@ -130,6 +134,7 @@ Forward zone: `lab.local`
 | `r2.lab.local` | A | `10.255.0.2` |
 | `sw1.lab.local` | A | `10.10.99.11` |
 | `sw2.lab.local` | A | `10.10.99.12` |
+| `sw3.lab.local` | A | `10.20.99.13` |
 | `web.lab.local` | A | `10.100.0.12` |
 | `dns.lab.local` | A | `10.100.0.10` |
 | `zabbix.lab.local` | A | `10.100.0.20` |

@@ -72,8 +72,10 @@ A capture with no written conclusion is not kept.
 | 04 | HTTP request and response | `http` | TCP handshake, `GET`, `200 OK` |
 | 05 | SSH session | `tcp.port == 22` | Handshake, then encrypted payload |
 | 05 | SNMP poll | `snmp` | Get-Request and Get-Response, OID being polled |
-| 07 | OSPF hellos | `ospf` | Multicast destination, hello interval, router IDs |
-| 07 | NAT in action | `icmp` | Address rewritten between inside and outside captures |
+| 07 | OSPF hellos | `ospf` | `224.0.0.5`, hello 10 s / dead 40 s, DR `10.0.0.2` / BDR `10.0.0.1` on the transit |
+| 07 | OSPF database exchange | `ospf` | After a process clear: 15 Hello, 10 DBD, 2 LSR, 22 LSU, 14 LSAck — the full adjacency |
+| 07 | NAT/PAT on the internet edge | `icmp` | Two inside locals (`10.10.10.165`, `10.10.20.162`) leave as one global (`10.0.0.13`); no private address on the wire |
+| 07 | WAN failover | `ospf` + `icmp` | The transit goes down and the same flow (CLIENT → `10.20.10.163`) reappears on the ISP path |
 
 ## Advanced exercises
 

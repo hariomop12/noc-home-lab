@@ -56,7 +56,7 @@ Accept the default destination filename when prompted. The files land in
 `/tftp` inside the container; copy them out with:
 
 ```sh
-docker cp GNS3.CLIENT-1.<project-id>:/tftp/. configs/lab-NN/
+docker cp GNS3.CLIENT.<project-id>:/tftp/. configs/lab-NN/
 ```
 
 `-c` allows the upload to create a file, and `-s` confines the server to
@@ -90,6 +90,23 @@ empty `strings` result proves nothing. Ask the device, not the file:
 ```
 show running-config | include ^hostname
 ```
+
+### The host power-cut trap (Lab 07)
+
+`write memory` writes to the node's virtual disk, but the emulator may still hold
+that write in its cache. If the **host** is powered off abruptly, the cache never
+reaches the qcow2 and the device boots factory-fresh — the same symptom as the
+project-copy trap, from a completely different cause. It happened twice during
+Lab 07: after a host restart, `R2` and `SW3` came up at the initial-configuration
+dialog, while `R1`, `ISP`, `SW1` and `SW2` — written days earlier — came up intact.
+The tell is that only the recently-changed devices are lost.
+
+Two habits turn that into a five-minute recovery instead of an hour:
+
+1. **Close the project before powering the host off.** Closing stops the nodes
+   gracefully and flushes their disks. A power-cut does not.
+2. **Export the configs as soon as the lab is verified.** `configs/lab-NN/` is the
+   backup that survives the host, the emulator and the disk file both.
 
 ## Restoring a config from a backup
 

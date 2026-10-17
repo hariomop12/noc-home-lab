@@ -243,11 +243,18 @@ side by side, on one clock.
 
 ```
 ! R1 (and the same idea on R2, for BR1)
-ip nat inside source list NAT-INTERNAL interface GigabitEthernet0/1 overload
+ip nat inside source route-map NAT-OVERLOAD interface GigabitEthernet0/1 overload
 !
-ip access-list standard NAT-INTERNAL
- permit 10.10.0.0 0.0.255.255
- permit 10.20.0.0 0.0.255.255
+! One extended ACL, read as a sentence:
+! "translate a site prefix only when the destination is outside the lab".
+ip access-list extended NAT-OVERLOAD-LIST
+ deny   ip 10.10.0.0 0.0.255.255 10.0.0.0 0.255.255.255
+ deny   ip 10.20.0.0 0.0.255.255 10.0.0.0 0.255.255.255
+ permit ip 10.10.0.0 0.0.255.255 any
+ permit ip 10.20.0.0 0.0.255.255 any
+!
+route-map NAT-OVERLOAD permit 10
+ match ip address NAT-OVERLOAD-LIST
 !
 interface GigabitEthernet0/0.10
  ip nat inside
@@ -264,19 +271,36 @@ Points that matter:
 - **`overload` is PAT.** Many inside hosts, one outside address, told apart by
   port. The proof is `show ip nat translations` showing two inside locals
   sharing one inside global with different ports.
-- **The NAT ACL scope is deliberate.** It names the two site supernets and nothing
-  else. If the transit `/30` were matched, HQ↔BR1 traffic would be translated for
-  no reason: site-to-site connectivity would come to depend on NAT, and the
-  capture on the transit would show translated addresses where the design promised
-  plain routing. The direction rule does the rest of the work — NAT only applies
-  from an `ip nat inside` interface to an `ip nat outside` interface, so a packet
-  arriving on the transit and leaving on the WAN is never translated.
+- **The destination filter is what keeps site-to-site traffic routed, and it has to
+  live in one ACL.** A source list alone does not deliver that promise: the transit
+  must be `ip nat outside` (next point), so a packet leaving a BR1 user VLAN for a
+  HQ subnet is an inside-to-outside packet and *is* translated. It was built that
+  way first and the failure was clean and worth recording: `PC5 → PC1` timed out,
+  and `show ip nat translations` on R1 showed the giveaway — entries whose
+  *outside local* was `10.20.10.163`, a lab address. Each site translated the flow
+  on the way out and the reply was translated a second time, so it came back
+  addressed to the other router's WAN interface instead of the original host. The
+  same mechanism rewrote BR1's management traffic to R2's WAN address, which broke
+  the management story in section 10 before it could be tested — the collector saw
+  `10.0.0.17` where the design promised `10.20.99.13`.
+  The second attempt looked right and failed the same way: a route-map with
+  `match ip address NAT-INTERNAL` and `match ip address NAT-EXTERNAL` on two lines.
+  **Multiple `match ip address` lines in the same sequence are OR'd**, and the
+  external list ends in `permit any`, so every packet matched. One extended ACL,
+  matching source *and* destination, is what actually expresses "translate it only
+  if it is leaving the lab". Three objects, one sentence of intent — and the fix
+  restored site-to-site routing and management identity in the same change.
+- **The NAT ACL scope is deliberate.** The source list names the two site
+  supernets and nothing else; the transit `/30` and the server VLAN are outside
+  it, so R1's own traffic and the NOC toolbox keep their addresses — `CLIENT` is
+  untranslated on purpose, which is what makes the before/after capture a
+  comparison rather than a coincidence.
 - **`ip nat inside` goes on LAN subinterfaces, `ip nat outside` on the
   ISP-facing interface and on the transit interface.** Site-to-site traffic never
-  enters NAT (the ACL excludes it), but the transit must be `outside` so that
-  drill B can translate in the other direction. If it is not, the failover works
-  for internal traffic and silently breaks the internet — the subtlety the drill
-  is designed to expose.
+  enters NAT (the destination filter excludes it), but the transit must be
+  `outside` so that drill B can translate in the other direction. If it is not,
+  the failover works for internal traffic and silently breaks the internet — the
+  subtlety the drill is designed to expose.
 
 ### Not in scope
 
@@ -352,9 +376,19 @@ as R2 and SW3. Forgetting this is how a new site becomes invisible to the
 collector: the branch can reach the poller, but the poller's reply is filtered by
 an ACL written before the branch existed. This is a deliberate part of the lab.
 
-The syslog collector names files by **source IP**, so the new files are
-`10.0.0.17.log` (R2's syslog source) and `10.20.99.13.log` (SW3). Confirm both
-appear before calling the branch managed.
+The syslog collector names files by **source IP**, and on this topology the two new
+files arrived differently from the first guess:
+
+| Device | File | Why |
+|---|---|---|
+| R2 | `10.0.0.2.log` | R2 reaches `10.100.0.11` over the transit, so it sources from the transit interface |
+| SW3 | `10.20.99.13.log` | SW3's own management address, untranslated once the NAT destination filter exists |
+
+`10.0.0.17.log` — R2's WAN address — appeared during the first build, and that was
+the tell: SW3's syslog was being translated on its way through R2, so the collector
+saw the router's WAN address where the design promised the branch switch. It is the
+same NAT fault that broke site-to-site traffic in section 8, seen from the
+management plane.
 
 ---
 
@@ -377,8 +411,11 @@ the WAN path really works for services, not just for pings.
    becomes a unicast across two hops (R2 → transit/ISP → HQ), and the server
    answers into the subnet named by `giaddr` (`10.20.10.1`).
 
-3. DNS is unchanged: the server is `10.100.0.10` for BR1 too. `r2.lab.local` is
-   already in the IP plan's DNS table (`10.255.0.2`).
+3. DNS is unchanged: the server is `10.100.0.10` for BR1 too. `r2.lab.local`
+   (`10.255.0.2`) and `sw3.lab.local` (`10.20.99.13`) are added as explicit records
+   in `dnsmasq.conf`. The first is already in the IP plan's DNS table, the second is
+   not, and the wildcard `address=/.lab.local/` would otherwise answer both with the
+   web server's address. `sw3.lab.local` is added to the IP plan at the same time.
 
 **Failure mode to watch:** DHCP relay through an OSPF path is a good test. If the
 relay works but DNS is slow, the problem is usually the return path, not the
@@ -390,7 +427,7 @@ server. Check `giaddr` in a capture before touching `dnsmasq`.
 
 | Item | Setting | Why |
 |---|---|---|
-| NAT ACL | names only the site supernets | site-to-site traffic must not be translated |
+| NAT | one extended ACL: site prefixes as source, every lab destination denied | site-to-site traffic must not be translated, in either direction |
 | VTY | SSH v2, `MGMT-ACCESS`, `deny any log` | a blocked login should be a log line |
 | Trunks | explicit allowed list, native 999, `nonegotiate` | same as Lab 06 |
 | Unused ports | shutdown, VLAN 999 | same as Lab 06 |
@@ -531,10 +568,10 @@ be explained rather than something learned from.
 | Item | State |
 |---|---|
 | Design | agreed (this document) |
-| Build | in progress |
-| Done | HQ intact after the in-place rename (R1 OSPF + default route, SW1/SW2 VLANs, PC1 lease). BR1 added and cabled: R2, SW3, PC5, PC6, SRV-NET. SW3 L2 done (VLAN 10/99/999, trunk to R2, SVI `10.20.99.13`). R2 done (VLAN subinterfaces + DHCP relay, WAN, transit, `Lo0`). Stage 1 static routing verified. Stage 2 OSPF verified: R2 has two neighbours, R1 and the ISP have two each, statics removed, transit preferred, `O*E2 0.0.0.0/0` on both sites. PC5 reaches HQ (`ping 10.100.0.10`, 4.7 ms) |
-| Not done | NAT/PAT, management plane for R2 and SW3, branch DHCP/DNS scope, the four captures, drills A/B/C, the MTU fault, verification table, lab guide |
-| Next step | NAT (section 8): start the capture on ISP `Gi0/1` ↔ SRV-NET, send the pre-NAT traffic, configure PAT on R1 and R2, send the same traffic again, stop the capture |
+| Build | **complete** — the record of the build, the evidence and the faults is `labs/lab-07-branch-wan/README.md` |
+| Done | Everything in the stage list: BR1 built and cabled; SW3 L2; R2 subinterfaces, relay, WAN, transit, `Lo0`; static stage then OSPF (transit preferred, `O*E2 0.0.0.0/0` at both sites); NAT/PAT on both routers; branch DHCP/DNS from the HQ servers; management plane for R2 and SW3; 13/13 verification rows; four captures; drills A and B measured; MTU fault injected, diagnosed and fixed; six configurations exported to `configs/lab-07/` |
+| Not done | Nothing required. Out of scope by design: static NAT/port forwarding inbound (O6), IPv6, redistribution, policy routing, per-ticket follow-ups |
+| Next step | Lab 08 (redundancy) builds on this topology: HSRP on the HQ distribution pair, STP root control, and a timed failover drill against the numbers measured here |
 
 Build notes worth keeping for the guide:
 
@@ -544,12 +581,22 @@ Build notes worth keeping for the guide:
   `show ip ospf interface brief` was correct the whole time.
 - R2 learns the default from the transit first (it is the only path until the WAN
   adjacency forms) and then moves to its own WAN once the ISP is a neighbour.
+- The NAT shape took three attempts; the working one is a **single extended ACL**
+  matching source and destination. A route-map with two `match ip address` lines
+  looks right and is a no-op (they are OR'd). See section 8.
 - PC5's address is a manual VPCS setting, so it does not survive a restart. The
-  DHCP scope in section 11 replaces it.
+  DHCP scope in section 11 replaces it — and the scope works over the relay.
 - SRV-NET shipped with the `web:lab` image default (`LAB_IP=10.100.0.12/24`,
   `LAB_GW=10.100.0.1`) because the node's Environment was never set, so the
   simulated internet did not exist until it was overridden to `200.1.1.10/24` with
   gateway `200.1.1.1`.
+- A first failure is not a second failure: drill A cost 5.8 s cold and under
+  300 ms warm. Quote which one you measured, and why (SPF + route install + ARP,
+  not the hello/dead timers).
+- **A hard host power-off can lose a recent `write memory`** — the emulator's
+  write cache. Two devices came back factory-fresh, four did not. Closing the
+  project before shutting the host down flushes it, and the TFTP export to
+  `configs/lab-07/` is the backup that survives everything.
 
 ### Bringing the lab back up
 
@@ -557,9 +604,9 @@ Build notes worth keeping for the guide:
 |---|---|
 | Open GNS3, open `lab-07-branch-wan` | 1 min |
 | Start all nodes — start the routers and switches first; `vios_l2` is the slowest to boot (~4–5 min) | 5 min |
-| Check: R1 and R2 `show ip ospf neighbor` = 2 FULL each, PC1 `ip dhcp` gets a lease | 1 min |
-| Re-apply PC5's address (`ip 10.20.10.100/24 10.20.10.1`) until the DHCP scope exists | 1 min |
-| Resume at the NAT step above | — |
+| Check: R1 and R2 `show ip ospf neighbor` = 2 FULL each, PC1 and PC5 `ip dhcp` both get a lease | 1 min |
+| If a docker node refuses to start with `No such container`, null `container_id` in the `.gns3` file with the project closed, then reopen | 2 min |
+| Restore any device that answers with a factory prompt from `configs/lab-07/` per `configs/README.md` | 2 min |
 
 If a device answers with a factory prompt instead of its hostname, it did not
 write its configuration before shutdown — restore it from `configs/` following

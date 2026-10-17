@@ -41,14 +41,16 @@ The lab is to build it, then diff reality against it.
   A static default would forward just as well and would prove nothing about the
   routing protocol.
 - **NAT is a source *and* a destination decision.** `overload` (PAT) lets many
-  inside hosts share one outside address, told apart by port. But a source list
-  alone does not keep site-to-site traffic routed: the transit must be
-  `ip nat outside` so that the failover drill can translate in the other direction,
-  and that makes BR1→HQ traffic an inside-to-outside flow. The destination filter
-  (`NAT-EXTERNAL`: deny everything in `10/8`, permit the rest) is what says
-  "translate only what is leaving the lab". Without it, both sites translate the
-  same flow and it dies — and BR1's management traffic arrives at the collector
-  wearing the router's WAN address.
+  inside hosts share one outside address, told apart by port. A source list alone
+  does not keep site-to-site traffic routed *in this topology*, because the transit
+  was marked `ip nat outside` on both routers, which makes BR1→HQ an
+  inside-to-outside flow. The destination filter (deny everything in `10/8`,
+  permit the rest) is what says "translate only what is leaving the lab". Without
+  it, both sites translate the same flow and it dies — and BR1's management
+  traffic arrives at the collector wearing the router's WAN address. **The cleaner
+  answer, applied in Lab 08, is to mark that transit `inside`: then it is not an
+  inside-to-outside flow at all and no destination filter is needed.** See the
+  correction in the convergence section.
 - **A relayed DHCP request is a unicast with a return path.** The branch has no
   server, so `R2 Gi0/0.10` stamps the client's subnet into `giaddr`
   (`10.20.10.1`) and unicasts to HQ. The server answers into the subnet `giaddr`
@@ -315,10 +317,28 @@ from the gaps in the sequence numbers — not from a stopwatch.
 | Drill | Probe | First run: outage / probes lost | Second run (warm) | What the device shows |
 |---|---|---|---|---|
 | A — transit down (`R1 Gi0/2` shut) | `CLIENT → 10.20.10.163` (BR1) | **5.8 s / 18** | **< 0.3 s / 0** | on recovery `show ip route 10.20.10.0` is `metric 3 via 10.0.0.14 Gi0/1` — the ISP path |
-| B — HQ WAN down (`R1 Gi0/1` shut) | `CLIENT → 200.1.1.10` (internet) | **5.8 s / 18** | — | during the outage `show ip route 0.0.0.0` is `O*E2 via 10.0.0.2 Gi0/2`: the default was relearned **from the ISP through the transit**, exactly what drill B predicts |
+| B — HQ WAN down (`R1 Gi0/1` shut) | `CLIENT → 200.1.1.10` (internet) | **5.8 s / 18** | — | during the outage `show ip route 0.0.0.0` is `O*E2 via 10.0.0.2 Gi0/2`: the default was relearned **from the ISP through the transit** — but see the correction below |
 | — with `ip ospf hello-interval 1` / `dead-interval 4` and `timers throttle spf` on the transit | `CLIENT → 10.20.10.163` | **< 0.3 s / 0** | — | `show ip ospf interface Gi0/2` → `Hello 1, Dead 4, Wait 4, Retransmit 5` |
 
 The honest reading of the two numbers, because the first one is not the timers:
+
+**Correction, found while designing Lab 08 (2026-10-17).** Drill B passes, but not
+for the reason this lab first claimed. With `ip nat inside source ... interface
+Gi0/1 overload` and `Gi0/1` down, IOS never creates the translation — the address
+left with the interface — and the packet is forwarded **untranslated**. The
+capture during the drill proves it: all 25 echo requests on the `ISP ↔ SRV-NET`
+link carry source `10.100.0.50`, a private address, and the replies come back
+because the simulated ISP is not filtering RFC1918 and has the HQ prefixes in its
+OSPF table.
+
+A real ISP edge filters private source addresses, so this drill would have failed
+there. The rule this lab teaches is narrower than it looked: marking the transit
+`ip nat outside` makes *this* router translate on it, which is right while its WAN
+is up and useless when it is down. The cleaner placement — used in Lab 08 — is to
+leave the internal path to a NAT partner **inside**, so the router whose WAN is
+actually up does the translation.
+
+Also true, and the reason the two runs differ:
 
 - **The trigger is a link-down event, so the timer change did not cause the
   difference.** A shut interface is reported immediately; OSPF then runs SPF and
@@ -380,6 +400,12 @@ just the lights" — same shape as ticket **T-05**.
   list ends in `permit any`. One extended ACL matching source *and* destination is
   the shape that actually works, and it fixed the management plane in the same
   change.
+- **A drill can pass for the wrong reason, and only a packet shows it.** Drill B
+  reported zero loss and looked like proof that the backup path translated
+  correctly. A capture taken while designing Lab 08 shows every request leaving
+  with the private source `10.100.0.50`. The lesson is not "the drill was wrong" —
+  the drill found something real — it is that a green ping is not evidence about
+  *how* the packet got there.
 - **A management-plane symptom is a data-plane symptom.** The syslog file named
   after R2's WAN address was the same bug as the dead ping, seen from the other end.
   Monitoring found the fault before the users did — which is the whole point.

@@ -296,11 +296,18 @@ Points that matter:
   untranslated on purpose, which is what makes the before/after capture a
   comparison rather than a coincidence.
 - **`ip nat inside` goes on LAN subinterfaces, `ip nat outside` on the
-  ISP-facing interface and on the transit interface.** Site-to-site traffic never
-  enters NAT (the destination filter excludes it), but the transit must be
-  `outside` so that drill B can translate in the other direction. If it is not,
-  the failover works for internal traffic and silently breaks the internet — the
-  subtlety the drill is designed to expose.
+  ISP-facing interface.** This build also marked the transit interface `outside`,
+  on the reasoning that drill B should translate "one hop earlier". **That was
+  wrong, and it is corrected in Lab 08.** With `interface Gi0/1 overload` and
+  `Gi0/1` down, IOS creates no translation — the address went with the interface —
+  and the packet is forwarded untranslated. A capture taken during drill B (while
+  designing Lab 08) shows every echo request on the `ISP ↔ SRV-NET` link carrying
+  the private source `10.100.0.50`. The drill passed only because the simulated ISP
+  does not filter RFC1918 and has the HQ prefixes in its OSPF table. A real ISP
+  edge would have dropped it. Marking the transit `inside` is both simpler (no
+  destination filter is needed, because site-to-site traffic is never
+  inside-to-outside) and correct: the router whose WAN is up does the
+  translation.
 
 ### Not in scope
 
@@ -325,7 +332,7 @@ here (see section 4).
 | # | Drill | What should happen |
 |---|---|---|
 | A | Shut the transit link (`R1 Gi0/2`) | HQ↔BR1 moves to the ISP path; internet is unaffected |
-| B | Shut R1's WAN link (`R1 Gi0/1`) | HQ's default route is relearned from R2 over the transit; internet survives — **only if R1 can translate on the transit path** |
+| B | Shut R1's WAN link (`R1 Gi0/1`) | HQ's default route is relearned over the transit; internet survives **because the router whose WAN is up does the translation** (see section 8 — the first build relied on R1 translating on the transit and leaked private addresses; Lab 08 corrects it) |
 | C | Shut R2's WAN link (`R2 Gi0/1`) | BR1's internet moves to the transit; HQ is unaffected |
 
 ### How convergence is measured
@@ -555,7 +562,7 @@ the build follows them.
 | O4 | Primary HQ↔BR1 path? | **The transit link** (one hop, not billed). The ISP path is the backup. |
 | O5 | Branch DHCP? | **HQ's server over the WAN**, with a relay on R2. The branch has no server of its own. |
 | O6 | Inbound ACL on the ISP-facing interface? | **Out of scope.** NAT overload is the only edge treatment in this lab. |
-| O7 | Keep the ISP in OSPF? | **Yes.** It is what Lab 06 already does, and it is what makes drill B work. |
+| O7 | Keep the ISP in OSPF? | **Yes.** It is what Lab 06 already does, and it is what makes the HQ prefix reachable from the ISP in both directions. It also turned out to be what let drill B *appear* to work while NAT was failing (section 8) — an argument for control-plane realism, and a reminder that a passing drill still needs a packet-level look. |
 
 **Guiding rule for this lab: keep it simple.** One OSPF area, no redistribution, no
 policy routing, no IPv6, no static NAT. Every extra knob is something that has to

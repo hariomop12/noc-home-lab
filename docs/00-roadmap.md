@@ -92,18 +92,38 @@ transit link between them.
 
 - [x] Write the design document first: `docs/designs/branch-wan-design.md`
       — topology, addressing, routing, NAT, failover and the drills that prove it.
-- [ ] Two sites (HQ and BR1) connected through a simulated ISP.
-- [ ] Static routing first, then OSPF. Measure and compare convergence.
-- [ ] NAT/PAT overload so the LAN can reach the simulated internet.
-- [ ] WAN failure: primary path down, backup path takes over. Record the timeline.
-- [ ] Decode OSPF hellos and the OSPF database exchange in Wireshark.
+- [x] Two sites (HQ and BR1) connected through a simulated ISP.
+- [x] Static routing first, then OSPF. Measure and compare convergence.
+- [x] NAT/PAT overload so the LAN can reach the simulated internet.
+- [x] WAN failure: primary path down, backup path takes over. Record the timeline.
+- [x] Decode OSPF hellos and the OSPF database exchange in Wireshark.
 
 **Exit criterion:** a link can be failed and the network recovers without manual
 intervention, and the recovery is explained from the packet level up.
 
-**Status: design agreed, build starting** — `docs/designs/branch-wan-design.md` is
-the agreed plan for Lab 07; its open questions are answered in section 18 (rename
-the Lab 06 project, IPv4 only, keep the ISP in OSPF, keep it simple).
+**Status: complete** (2026-10-17). The build, the evidence and two corrections are
+in `labs/lab-07-branch-wan/README.md`: drill B passed for the wrong reason (private
+addresses were reaching the internet link), and the fix is designed into Phase 3.5
+below.
+
+---
+
+## Phase 3.5 — Redundancy
+
+Make the HQ survive the failures that Labs 06 and 07 could only demonstrate. Same
+site, three layers of redundancy, all measured.
+
+- [ ] Write the design document first: `docs/designs/redundancy-design.md`
+      — HSRP split per VLAN, a second HQ router with its own WAN, cost-tuned OSPF,
+      a second inter-switch trunk and STP root control.
+- [ ] Add the second HQ router and give every VLAN a surviving gateway (HSRP).
+- [ ] Give the HQ a second WAN link and prove both egress paths.
+- [ ] Put two links between the switches and control which carries which VLAN.
+- [ ] Measure each failover, and re-run the Lab 06/07 checks as regressions.
+
+**Exit criterion:** any one of {an HQ router, an HQ uplink, a switch, a cable} can be
+failed and the measured outage is explained by a specific protocol timer or topology
+event — with no private address leaking to the internet on any path.
 
 ---
 
@@ -163,3 +183,5 @@ the response follows a written runbook.
 | 2026-10-17 | Lab 07 verified end to end: BR1 leases from the HQ `dnsmasq` over the relay (`10.20.10.163`/`.164`, `giaddr` `10.20.10.1`), site-to-site ICMP both ways, both sites reach `200.1.1.10`, PAT proof (inside locals `10.10.10.165` and `10.10.20.162` → one inside global `10.0.0.13`), cross-site DNS (`web.lab.local`, `sw3.lab.local`), SNMP poll of R2 and SW3 from `CLIENT`. Four captures taken through the API rather than the GUI: hellos, database exchange at packet level, NAT/PAT on the internet edge, and a merged WAN-failover capture |
 | 2026-10-17 | Lab 07 failover drills measured, not felt: drill A (transit down) 5.8 s and 18 lost probes on the first run, under 300 ms on the warm second run; drill B (HQ WAN down) the same, and `show ip route 0.0.0.0` during the outage proved the default relearned from the ISP **through the transit** (`O*E2 via 10.0.0.2`). Fault #1 injected (transit MTU mismatch): neighbour stuck in EXCHANGE, HQ→BR1 silently moved to the two-hop ISP path — fixed by removing the mismatch |
 | 2026-10-17 | Lab 07 complete: guide written (`labs/lab-07-branch-wan/README.md`), six configurations exported to `configs/lab-07/`, four captures in `wireshark/`, design-vs-config diff done. Phase 3 closed |
+| 2026-10-17 | Lab 07 correction, found while designing Lab 08: **drill B passed for the wrong reason.** A capture taken during the drill shows every echo request on the `ISP ↔ SRV-NET` link carrying the private source `10.100.0.50`. With `interface Gi0/1 overload` and `Gi0/1` shut, IOS creates no translation and forwards the packet untranslated; it only worked because the simulated ISP does not filter RFC1918 and has the HQ prefixes in OSPF. Recorded in the Lab 07 guide and design (section 8), and the corrected rule — internal transits are `ip nat inside`, so the router whose WAN is up translates — is designed into Lab 08 |
+| 2026-10-17 | Phase 3.5 design written (`docs/designs/redundancy-design.md`, status proposed): a second HQ router with its own WAN, HSRP split per VLAN keeping the existing `.1` VIPs, OSPF adjacency confined to a new VLAN 200 core transit with cost tuning per VLAN for path symmetry, a second inter-switch trunk with STP root control aligned to the HSRP active roles, and five measured drills. Verification against Cisco's IOSvL2 feature list confirmed 16 Gigabit interfaces and HSRP support, and that SPAN is unavailable — so captures stay on links |

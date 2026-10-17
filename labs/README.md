@@ -51,7 +51,7 @@ The reasoning behind the ordering is in [../docs/00-roadmap.md](../docs/00-roadm
 |---|---|---|---|---|---|
 | 06 | [Small Enterprise HQ](lab-06-hq/README.md) | combo | 2-3 days | Requirements → design → build → verify, inter-VLAN, OSPF, ACLs, DHCP relay | done |
 | 07 | [Branch + WAN + NAT](lab-07-branch-wan/README.md) | combo | 2 days | WAN technologies, OSPF convergence, NAT/PAT, default route, link failure | done |
-| 08 | Redundancy | complex | 1 day | HSRP, OSPF tuning, STP root control, convergence measurement | not-started |
+| 08 | [Redundancy](../docs/designs/redundancy-design.md) *(design)* | complex | 1 day | HSRP, OSPF tuning, STP root control, convergence measurement | in-progress |
 | 09 | Full NOC | complex | 2-3 days | Zabbix, SNMP polling, central syslog, alert triage, failover drill | not-started |
 
 ## Ticket labs

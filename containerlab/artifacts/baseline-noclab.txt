@@ -1,0 +1,67 @@
+
+containerlab baseline - 2026-10-17 13:49:41 IST
+
+== containers
+  PASS  containers                     18 nodes running
+
+== routing (OSPF, one area)
+  PASS  ospf-r1                        r1: both neighbours FULL
+  PASS  ospf-r2                        r2: both neighbours FULL
+  PASS  default-r1                     r1 has an OSPF default route
+  PASS  default-r2                     r2 has an OSPF default route
+  PASS  br1-via-transit                r1 reaches BR1 over the transit
+  PASS  hq-via-transit                 r2 reaches HQ over the transit
+
+== DHCP (one server, relayed)
+  PASS  dhcp-pc1                       pc1 has a VLAN 10 lease
+  PASS  dhcp-pc2                       pc2 has a VLAN 20 lease
+  PASS  dhcp-pc3                       pc3 has a VLAN 30 lease
+  PASS  dhcp-pc4                       pc4 has a VLAN 30 lease
+  PASS  dhcp-pc5                       pc5 has a BR1 lease
+  PASS  dhcp-pc6                       pc6 has a BR1 lease
+
+== reachability
+  PASS  pc1-to-gw                      pc1 -> VLAN 10 gateway
+  PASS  pc2-to-gw                      pc2 -> VLAN 20 gateway
+  PASS  pc3-to-gw                      pc3 -> VLAN 30 gateway
+  PASS  pc4-to-gw                      pc4 -> VLAN 30 gateway
+  PASS  pc5-to-gw                      pc5 -> BR1 gateway
+  PASS  pc6-to-gw                      pc6 -> BR1 gateway
+  PASS  inter-vlan                     pc1 (VLAN 10) -> srv-web (VLAN 40)
+  PASS  inter-vlan2                    pc4 (VLAN 30) -> srv-web (VLAN 40)
+  PASS  br1-to-hq                      pc5 (BR1) -> srv-web (HQ)
+  PASS  br1-to-hq-loopback             pc5 -> r1 loopback 10.255.0.1
+  PASS  internet-hq                    pc1 -> 200.1.1.10 (NAT)
+  PASS  internet-br1                   pc5 -> 200.1.1.10 (NAT)
+  PASS  mgmt-sw1                       client -> sw1 VLAN 99 SVI
+  PASS  mgmt-sw3                       client -> sw3 VLAN 99 SVI
+
+== NAT (only the WAN interface translates)
+  PASS  nat-translated                 conntrack shows the WAN address
+  PASS  nat-on-the-wire                the internet sees r1's WAN address
+  PASS  nat-not-leaking                no private source on the ISP internet link
+  PASS  nat-rule                       r1 NAT matches the WAN interface only
+
+== DNS
+  PASS  dns-a-record                   client resolves web.lab.local
+  PASS  dns-ptr                        client resolves r1.lab.local
+
+== layer 2 (STP)
+  PASS  stp-loop-broken                exactly one uplink is blocking
+  PASS  stp-root                       sw1 is the root bridge (priority 4096)
+
+== management plane
+  PASS  snmp-r1                        SNMP labRO reachable on r1
+  PASS  snmp-r2                        SNMP labRO reachable on r2
+  PASS  snmp-sw1                       SNMP labRO reachable on sw1
+  PASS  snmp-sw2                       SNMP labRO reachable on sw2
+  PASS  snmp-sw3                       SNMP labRO reachable on sw3
+  PASS  snmp-isp                       SNMP labRO reachable on isp
+  PASS  syslog-r1                      collector has r1's messages
+  PASS  syslog-sw1                     collector has sw1's messages
+  PASS  syslog-isp                     collector has ISP messages
+  PASS  ntp-r1                         r1 is synced to srv-ntp
+  PASS  ntp-sw1                        sw1 is synced to srv-ntp
+
+46 passed, 0 failed
+

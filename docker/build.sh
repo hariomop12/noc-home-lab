@@ -4,7 +4,7 @@ set -eu
 
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
-for img in noc-tools syslog dnsmasq web ntp; do
+for img in noc-tools syslog dnsmasq web ntp clab-frr clab-host; do
   echo "==> building ${img}:lab"
   docker build -t "${img}:lab" -f "${here}/${img}/Dockerfile" "${here}"
 done
@@ -12,4 +12,4 @@ done
 echo
 echo "Done. Images:"
 docker images --format '{{.Repository}}:{{.Tag}}\t{{.Size}}' \
-  | grep -E '^(noc-tools|syslog|dnsmasq|web):lab' || true
+  | grep -E '^(noc-tools|syslog|dnsmasq|web|ntp|clab-frr|clab-host):lab' || true

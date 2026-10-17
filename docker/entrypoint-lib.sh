@@ -2,8 +2,14 @@
 # Shared entrypoint logic for the lab service images.
 #
 # Reads:
-#   LAB_IP  required, "address/prefix"   e.g. 10.100.0.10/24
-#   LAB_GW  optional, gateway address     e.g. 10.100.0.1
+#   LAB_IP    required, "address/prefix"   e.g. 10.100.0.10/24
+#   LAB_GW    optional, gateway address     e.g. 10.100.0.1
+#   LAB_IFACE optional, interface to use    e.g. eth1
+#
+# In the GNS3 labs a docker node has a single interface, so the address simply
+# went on the default-route interface. Under containerlab the first interface is
+# the out-of-band management network, so the data interface has to be named -
+# LAB_IFACE=eth1 - otherwise the address would land on eth0 and cut the lab off.
 #
 # Applies the address, sets the default route, then execs the service.
 # Sourced, not executed: the calling entrypoint does `exec "$@"` itself.
@@ -14,7 +20,26 @@ apply_lab_address() {
     return 0
   fi
 
-  iface=$(ip -o -4 route show default 2>/dev/null | awk '{print $5}' | head -n1)
+  iface="${LAB_IFACE:-}"
+
+  # Under containerlab the data interface may not exist yet when the container's
+  # entrypoint runs: the veth is moved in shortly after. Waiting here is what
+  # makes `LAB_IFACE=eth1` reliable instead of a race.
+  if [ -n "$iface" ]; then
+    waited=0
+    while ! ip link show "$iface" >/dev/null 2>&1; do
+      waited=$((waited + 1))
+      if [ "$waited" -gt 60 ]; then
+        echo "lab-entrypoint: $iface never appeared" >&2
+        break
+      fi
+      sleep 1
+    done
+  fi
+
+  if [ -z "$iface" ]; then
+    iface=$(ip -o -4 route show default 2>/dev/null | awk '{print $5}' | head -n1)
+  fi
 
   if [ -z "$iface" ]; then
     iface=$(ip -o link show \

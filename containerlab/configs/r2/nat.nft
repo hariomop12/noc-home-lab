@@ -1,0 +1,12 @@
+#!/usr/sbin/nft -f
+#
+# NAT overload on the branch WAN. Only the outside link translates, and only the
+# branch user prefix as a source - HQ prefixes crossing the transit keep their
+# real addresses, which is what makes the site-to-site traffic work.
+table ip nat {
+	chain postrouting {
+		type nat hook postrouting priority srcnat; policy accept;
+
+		oifname "eth1" ip saddr { 10.20.0.0/16, 10.10.0.0/16, 10.100.0.0/16 } masquerade
+	}
+}

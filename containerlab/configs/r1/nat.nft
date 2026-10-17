@@ -1,0 +1,22 @@
+#!/usr/sbin/nft -f
+#
+# NAT overload on the HQ edge router.
+#
+# This is the corrected rule from Lab 07, expressed for nftables: translate only
+# what leaves over the WAN interface, and only traffic sourced from the lab's own
+# prefixes. The internal transit to r2 is NOT translated, so when r1's WAN is
+# down the packet travels to r2 untranslated and r2 does the translation on its
+# own WAN - no private address ever leaves towards the ISP.
+#
+#   oifname "eth1"    = only the outside link
+#   ip saddr {...}    = only the lab (10.0.0.0/24 transit hops stay visible)
+#
+# Inspect with:  nft list ruleset
+# Inspect flows: conntrack -L
+table ip nat {
+	chain postrouting {
+		type nat hook postrouting priority srcnat; policy accept;
+
+		oifname "eth1" ip saddr { 10.10.0.0/16, 10.20.0.0/16, 10.100.0.0/16 } masquerade
+	}
+}

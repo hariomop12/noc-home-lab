@@ -1,0 +1,190 @@
+# =============================================================================
+#  noc-home-lab - HQ + Branch-1 + simulated ISP, rebuilt in containerlab
+#
+#  Same addressing plan as the GNS3 labs (docs/01-ip-plan.md), same topology as
+#  Lab 06 (HQ) and Lab 07 (BR1 + WAN + NAT), but with real FRRouting routers and
+#  Linux-bridge switches. Nothing here is emulated hardware: every node is a
+#  container, so the whole network comes up from this one file.
+#
+#  Interface names follow the order in which a node appears in `links`:
+#  the first link becomes eth1, the second eth2, and so on. eth0 is always the
+#  containerlab out-of-band management network (172.21.21.0/24).
+#
+#    sudo containerlab deploy  -t topology.clab.yml
+#    containerlab inspect      -t topology.clab.yml
+#    sudo containerlab destroy -t topology.clab.yml --cleanup
+#
+#  Lab guides: labs/lab-09-full-noc/README.md and docs/tickets/
+# =============================================================================
+name: noclab
+
+mgmt:
+  network: noclab-mgmt
+  ipv4-subnet: 172.21.21.0/24
+
+topology:
+  kinds:
+    # Router: FRR + nftables NAT + SNMP/syslog/NTP agents.
+    frr:
+      image: clab-frr:lab
+      binds:
+        - configs/frr/daemons:/etc/frr/daemons:ro
+        - configs/frr/vtysh.conf:/etc/frr/vtysh.conf:ro
+        - configs/common/agents.sh:/etc/lab/agents.sh:ro
+      exec:
+        - touch /tmp/.lab-interfaces-ready
+
+    # Host or access switch: iproute2 + SNMP/syslog/NTP agents.
+    # The service containers of the lab (dnsmasq, syslog, web, ntp, noc-tools)
+    # are also `linux` nodes; they only override the image below.
+    linux:
+      image: clab-host:lab
+      binds:
+        - configs/common/agents.sh:/etc/lab/agents.sh:ro
+        - configs/hosts/udhcpc-script.sh:/etc/lab/udhcpc-script.sh:ro
+      exec:
+        - touch /tmp/.lab-interfaces-ready
+
+  nodes:
+    # ---------------------------------------------------------- internet edge
+    isp:
+      kind: frr
+      binds:
+        - configs/isp/frr.conf:/etc/frr/frr.conf
+        - configs/isp/setup.sh:/etc/lab/setup.sh
+
+    # The "public internet": one web server on a routable-looking subnet.
+    srv-net:
+      kind: linux
+      image: web:lab
+      env:
+        LAB_IFACE: eth1
+        LAB_IP: 200.1.1.10/24
+        LAB_GW: 200.1.1.1
+
+    # -------------------------------------------------------------------- HQ
+    r1:
+      kind: frr
+      binds:
+        - configs/r1/frr.conf:/etc/frr/frr.conf
+        - configs/r1/setup.sh:/etc/lab/setup.sh
+        - configs/r1/nat.nft:/etc/lab/nat.nft:ro
+        - configs/r1/dhcp-relay.conf:/etc/lab/dhcp-relay.conf:ro
+
+    sw1:
+      kind: linux
+      binds:
+        - configs/sw1/setup.sh:/etc/lab/setup.sh
+
+    sw2:
+      kind: linux
+      binds:
+        - configs/sw2/setup.sh:/etc/lab/setup.sh
+
+    pc1:
+      kind: linux
+      binds:
+        - configs/hosts/dhcp-hq.sh:/etc/lab/setup.sh
+    pc2:
+      kind: linux
+      binds:
+        - configs/hosts/dhcp-hq.sh:/etc/lab/setup.sh
+    pc3:
+      kind: linux
+      binds:
+        - configs/hosts/dhcp-hq.sh:/etc/lab/setup.sh
+    pc4:
+      kind: linux
+      binds:
+        - configs/hosts/dhcp-hq.sh:/etc/lab/setup.sh
+
+    # ------------------------------------------------------------- HQ servers
+    # The NOC toolbox from Lab 05: ssh, snmpget, dig, tcpdump, nmap.
+    client:
+      kind: linux
+      image: noc-tools:lab
+      env:
+        LAB_IFACE: eth1
+        LAB_IP: 10.100.0.50/24
+        LAB_GW: 10.100.0.1
+
+    srv-dns:
+      kind: linux
+      image: dnsmasq:lab
+      env:
+        LAB_IFACE: eth1
+        LAB_IP: 10.100.0.10/24
+        LAB_GW: 10.100.0.1
+
+    srv-syslog:
+      kind: linux
+      image: syslog:lab
+      env:
+        LAB_IFACE: eth1
+        LAB_IP: 10.100.0.11/24
+        LAB_GW: 10.100.0.1
+
+    srv-web:
+      kind: linux
+      image: web:lab
+      env:
+        LAB_IFACE: eth1
+        LAB_IP: 10.100.0.12/24
+        LAB_GW: 10.100.0.1
+
+    srv-ntp:
+      kind: linux
+      image: ntp:lab
+      env:
+        LAB_IFACE: eth1
+        LAB_IP: 10.100.0.13/24
+        LAB_GW: 10.100.0.1
+
+    # -------------------------------------------------------------- Branch-1
+    r2:
+      kind: frr
+      binds:
+        - configs/r2/frr.conf:/etc/frr/frr.conf
+        - configs/r2/setup.sh:/etc/lab/setup.sh
+        - configs/r2/nat.nft:/etc/lab/nat.nft:ro
+        - configs/r2/dhcp-relay.conf:/etc/lab/dhcp-relay.conf:ro
+
+    sw3:
+      kind: linux
+      binds:
+        - configs/sw3/setup.sh:/etc/lab/setup.sh
+
+    pc5:
+      kind: linux
+      binds:
+        - configs/hosts/dhcp-br.sh:/etc/lab/setup.sh
+    pc6:
+      kind: linux
+      binds:
+        - configs/hosts/dhcp-br.sh:/etc/lab/setup.sh
+
+  links:
+    # --- WAN / internet edge -------------------------------------------------
+    - endpoints: ["isp:eth1", "r1:eth1"]      # 10.0.0.12/30  HQ WAN
+    - endpoints: ["isp:eth2", "r2:eth1"]      # 10.0.0.16/30  BR1 WAN
+    - endpoints: ["isp:eth3", "srv-net:eth1"] # 200.1.1.0/24  the internet
+    - endpoints: ["r1:eth3", "r2:eth3"]       # 10.0.0.0/30   transit
+
+    # --- HQ access layer -----------------------------------------------------
+    - endpoints: ["r1:eth2", "sw1:eth1"]      # trunk: VLANs 10,20,30,40,99
+    - endpoints: ["sw1:eth4", "sw2:eth1"]     # inter-switch link A
+    - endpoints: ["sw1:eth5", "sw2:eth2"]     # inter-switch link B (the loop)
+    - endpoints: ["sw1:eth2", "pc1:eth1"]     # VLAN 10 HR
+    - endpoints: ["sw1:eth3", "pc2:eth1"]     # VLAN 20 SALES
+    - endpoints: ["sw2:eth3", "pc3:eth1"]     # VLAN 30 IT
+    - endpoints: ["sw2:eth4", "pc4:eth1"]     # VLAN 30 IT
+    - endpoints: ["sw2:eth5", "client:eth1"]  # VLAN 40 NOC toolbox
+    - endpoints: ["sw2:eth6", "srv-dns:eth1"]     # VLAN 40
+    - endpoints: ["sw2:eth7", "srv-syslog:eth1"]  # VLAN 40
+    - endpoints: ["sw2:eth8", "srv-web:eth1"]     # VLAN 40
+    - endpoints: ["sw2:eth9", "srv-ntp:eth1"]     # VLAN 40
+
+    # --- Branch access layer -------------------------------------------------
+    - endpoints: ["r2:eth2", "sw3:eth1"]      # trunk: VLANs 10,99
+    - endpoints: ["sw3:eth2", "pc5:eth1"]     # BR1 VLAN 10
+    - endpoints: ["sw3:eth3", "pc6:eth1"]     # BR1 VLAN 10

@@ -35,6 +35,17 @@ __pycache__/
 venv/
 *.retry
 
+# ---------------- containerlab generated state ----------------
+# clab-<name>/ holds the live state (TLS certs, inventories, per-node config
+# copies) that containerlab regenerates on every deploy. It is build output.
+# The pattern is anchored: the containerlab images in docker/ must not match.
+containerlab/clab-*/
+
+# ---------------- containerlab captures ----------------
+# Packet captures are kept, but only in wireshark/ where they are documented.
+containerlab/**/*.pcap
+containerlab/**/*.pcapng
+
 # ---------------- OS junk ----------------
 .DS_Store
 Thumbs.db

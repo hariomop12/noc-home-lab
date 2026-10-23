@@ -1,8 +1,8 @@
 
-containerlab baseline - 2026-10-17 13:49:41 IST
+containerlab baseline - 2026-10-18 09:04:47 IST
 
 == containers
-  PASS  containers                     18 nodes running
+  PASS  containers                     22 nodes running
 
 == routing (OSPF, one area)
   PASS  ospf-r1                        r1: both neighbours FULL
@@ -63,5 +63,12 @@ containerlab baseline - 2026-10-17 13:49:41 IST
   PASS  ntp-r1                         r1 is synced to srv-ntp
   PASS  ntp-sw1                        sw1 is synced to srv-ntp
 
-46 passed, 0 failed
+== NOC stack (Phase 5)
+  PASS  zbx-db                         Postgres accepts connections (5432, out-of-band)
+  PASS  zbx-server                     Zabbix server listens (10051)
+  PASS  zbx-agent                      Zabbix agent listens (10050)
+  PASS  zbx-web                        frontend answers HTTP on 8080
+  PASS  zbx-api                        API answers apiinfo.version
+
+51 passed, 0 failed
 

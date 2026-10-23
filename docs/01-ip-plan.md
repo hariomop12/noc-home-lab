@@ -57,19 +57,42 @@ for testing, and it never goes down as long as the router is alive.
 | R2 ↔ ISP | `10.0.0.16/30` | R2 `.17` | ISP `.18` |
 | R3 ↔ ISP | `10.0.0.20/30` | R3 `.21` | ISP `.22` |
 
+`R1 ↔ R3` (`10.0.0.4/30`) is deliberately **not** cabled: the HQ pair talks over a
+VLAN 200 core transit instead, because the two access switches have no spare
+ports for a direct router-to-router link. The subnet stays reserved in case the
+topology ever changes. See
+[designs/redundancy-design.md](designs/redundancy-design.md).
+
 Continue from `10.0.0.24/30` for additional links. A `/30` gives exactly two
 usable addresses — correct for a point-to-point link, and a good reminder of why
 `/31` exists on modern equipment.
 
 ## HQ VLANs
 
-| VLAN | Name | Subnet | Gateway (R1 SVI) | DHCP pool |
+| VLAN | Name | Subnet | Gateway (HSRP VIP) | DHCP pool |
 |---|---|---|---|---|
 | 10 | HR | `10.10.10.0/24` | `10.10.10.1` | `.100` – `.200` |
 | 20 | SALES | `10.10.20.0/24` | `10.10.20.1` | `.100` – `.200` |
 | 30 | IT | `10.10.30.0/24` | `10.10.30.1` | `.100` – `.200` |
 | 40 | SERVERS | `10.100.0.0/24` | `10.100.0.1` | static only |
 | 99 | MGMT | `10.10.99.0/24` | `10.10.99.1` | static only |
+| 200 | CORE-TRANSIT | `10.10.200.0/30` | — | — |
+
+From Lab 08 the HQ has **two** routers, so each gateway address is an HSRP
+virtual IP and the routers take real addresses on either side of it:
+
+| VLAN | Virtual IP | R1 | R3 | Active router |
+|---|---|---|---|---|
+| 10 HR | `10.10.10.1` | `.2` | `.3` | R1 |
+| 20 SALES | `10.10.20.1` | `.2` | `.3` | R3 |
+| 30 IT | `10.10.30.1` | `.2` | `.3` | R3 |
+| 40 SERVERS | `10.100.0.1` | `.2` | `.3` | R1 |
+| 99 MGMT | `10.10.99.1` | `.2` | `.3` | R1 |
+
+Keeping the VIPs on the numbers the network already used is what makes the change
+invisible to DHCP scopes, DNS, ACLs, the switches' default gateways and the
+branch's DHCP relay. The R1↔R3 OSPF adjacency rides VLAN 200 only
+(`10.10.200.1` / `.2`); every other subinterface is passive.
 
 VLAN 40 is addressed out of the **Servers / DC** supernet (`10.100.0.0/16`), not
 out of `10.10.0.0/16`. Server addresses are deliberately site-independent — the
@@ -169,6 +192,14 @@ Both SLAAC and DHCPv6 will be tested, and the difference recorded in the lab not
 | `vios` (router) | `GigabitEthernet0/0` … `0/3` |
 | `vios_l2` (switch) | `GigabitEthernet0/0` … `0/3` (switchports), `Vlan99` (SVI) |
 | `c7200` (fallback) | `GigabitEthernet` slots — check what the image provides |
+
+`vios_l2` supports up to 16 GigabitEthernet interfaces, but the extra NICs added
+beyond the first four appear in **slot 1**, not slot 0: adapters 4 and 5 are
+`Gi1/0` and `Gi1/1`. Lab 08 gives `SW1` five adapters and `SW2` six, which is why
+those two ports exist. GNS3 does not always re-apply the link state of links that
+already existed when a node's adapter count changes — the helper `linkup.py`
+fixes that from the QEMU monitor (see
+[designs/redundancy-design.md](designs/redundancy-design.md), section 20).
 
 Interface convention used by every lab: **the lowest port faces the LAN, the
 highest port faces the WAN or uplink.** When a cable is being followed in a

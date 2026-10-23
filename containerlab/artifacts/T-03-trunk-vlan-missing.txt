@@ -1,0 +1,54 @@
+### T-03-trunk-vlan-missing
+#   started 2026-10-18T09:21:54+05:30
+#   containerlab lab: noclab, 22 nodes running
+
+# 09:21:54   fault injected
+$ T-03-trunk-vlan-missing.sh inject
+$ bridge vlan del vid 30 on both sw2 uplinks
+
+# 09:22:00   evidence collected (fault live)
+$ T-03-trunk-vlan-missing.sh evidence
+
+---- the user's view ----
+ping 10.10.30.132 from pc3 : ok
+ping 10.10.30.1 from pc3 : FAILED
+ping 10.100.0.12 from pc3 : FAILED
+
+---- where the VLAN exists ----
+$ bridge vlan show   (on sw2 - no 30)
+eth1              10
+                  20
+                  40
+                  99
+eth2              10
+                  20
+                  40
+--
+eth10             40 PVID Egress Untagged
+eth11             40 PVID Egress Untagged
+eth12             40 PVID Egress Untagged
+br0               1 Egress Untagged
+                  99 PVID Egress Untagged
+$ bridge vlan show   (on sw1 - 30 present)
+eth1              10
+                  20
+                  30
+                  40
+                  99
+eth4              10
+                  20
+
+---- the router side is fine ----
+$ ip -4 addr show eth2.30   (on r1)
+5: eth2.30@eth2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP group default qlen 1000
+    inet 10.10.30.1/24 brd 10.10.30.255 scope global eth2.30
+
+# 09:22:08   fix applied
+$ T-03-trunk-vlan-missing.sh fix
+$ bridge vlan add vid 30 on both sw2 uplinks
+
+# 09:22:12   verification
+$ T-03-trunk-vlan-missing.sh verify
+T-03 verified: pc3 reaches its gateway over the trunk again
+
+# 09:22:13   done

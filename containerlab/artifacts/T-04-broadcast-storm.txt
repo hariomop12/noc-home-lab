@@ -1,0 +1,46 @@
+### T-04-broadcast-storm
+#   started 2026-10-18T09:22:13+05:30
+#   containerlab lab: noclab, 22 nodes running
+
+# 09:22:13   fault injected
+$ T-04-broadcast-storm.sh inject
+$ stp_state 0 on sw1 and sw2 (the loop is now unprotected)
+$ bounce the four inter-switch ports, so they come back forwarding
+$ (safety) auto-restore in 30 s
+
+# 09:22:20   evidence collected (fault live)
+$ T-04-broadcast-storm.sh evidence
+
+---- what the users see ----
+$ ping -c8 pc1 -> srv-web (VLAN 10 -> VLAN 40)
+8 packets transmitted, 0 received, 100% packet loss, time 2145ms
+
+
+---- the loop carries everything twice - the counters prove the storm ----
+$ ip -s link show eth4   (sw1's uplink towards sw2, two samples 3 s apart)
+    1883742688 19923142      0    6356       0       0 
+    2009510622 21086764      0    6356       0       0 
+
+---- and the bridges are busy doing it ----
+$ cat /proc/loadavg   (sw1 and sw2)
+3.24 1.75 1.51 22/1880 1090
+3.24 1.75 1.51 18/1880 670
+
+---- STP is no longer breaking the loop ----
+$ stp_state, and the number of blocking ports (0 while STP is off)
+0
+  blocking ports: 0
+
+# 09:22:29   fix applied
+$ T-04-broadcast-storm.sh fix
+$ stp_state 1 on sw1 and sw2 (STP re-elects and re-blocks an uplink)
+
+# 09:22:42   verification
+$ T-04-broadcast-storm.sh verify
+T-04 verified: traffic is healthy again
+  blocking ports: 1 (STP is breaking the loop again)
+$ ip -s link show eth4   (two samples 3 s apart - the rate is back to normal)
+    2663775524 24663459      0    6356       0       0 
+    2663780736 24663476      0    6356       0       0 
+
+# 09:23:02   done

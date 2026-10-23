@@ -44,12 +44,19 @@ EOF
 # -------------------------------------------------------------- syslog ------
 # Everything to the central collector over UDP/514, and keep the local copy so
 # `cat /var/log/messages` still works inside the node.
+# The second rule is the remote copy over UDP/514. It is written as an explicit
+# action() instead of the short "@host:514" selector because of a trap that cost
+# one baseline run: a node that boots before its route to the collector exists
+# (the simulated ISP is the usual victim) fails to send, and rsyslog *suspends*
+# the action with a growing retry interval - minutes of silence even though the
+# network is fine a second later. resumeRetryCount="-1" retries every 5 s
+# forever instead of backing off.
 cat > /etc/rsyslog.conf <<EOF
 module(load="imuxsock")
 module(load="imklog")
 
 *.*                                                     /var/log/messages
-*.*                                                     @${SYSLOG_SERVER}:514
+*.* action(type="omfwd" target="${SYSLOG_SERVER}" port="514" protocol="udp" action.resumeRetryCount="-1" action.resumeInterval="5")
 EOF
 
 /usr/sbin/rsyslogd 2>/dev/null || echo "agents: rsyslogd failed"

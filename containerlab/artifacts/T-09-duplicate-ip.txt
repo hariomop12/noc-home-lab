@@ -1,0 +1,54 @@
+### T-09-duplicate-ip
+#   started 2026-10-18T09:19:50+05:30
+#   containerlab lab: noclab, 22 nodes running
+
+# 09:19:50   fault injected
+$ T-09-duplicate-ip.sh inject
+$ stop pc3's DHCP client loop (a renewal would undo this)
+$ pc3 claims pc4's address (10.10.30.132) as a second address
+$ pc3 announces it, as a real host would on startup (arping -U)
+Received 0 response(s)
+  injected: pc3 holds 10.10.30.132 as well as 10.10.30.141
+
+# 09:19:59   evidence collected (fault live)
+$ T-09-duplicate-ip.sh evidence
+  the disputed address is 10.10.30.132
+
+---- the owner's own check: duplicate address detection ----
+$ arping -D from pc4
+Unicast reply from 10.10.30.132 [AA:C1:AB:7F:D6:9B]  0.582ms
+Received 1 response(s)
+
+---- and the router's cache can point at either MAC ----
+$ ping the disputed address from r1, then read r1's cache
+10.10.30.132 lladdr aa:c1:ab:66:d0:8d DELAY 
+  pc4's real MAC: aa:c1:ab:66:d0:8d   pc3's (the duplicate): aa:c1:ab:7f:d6:9b
+
+---- the victim: the owner cannot rely on its own address ----
+$ ping -c20 -i 0.5 -W2 pc4 -> its gateway (20 packets over 10 s)
+20 packets transmitted, 20 received, 0% packet loss, time 9574ms
+rtt min/avg/max/mdev = 0.059/0.095/0.187/0.026 ms
+  the loss is intermittent by nature: the router re-resolves the
+  disputed address every time its cache goes stale, and whichever host
+  answers last gets the next packet.
+$ for contrast, the duplicate host is perfectly happy
+4 packets transmitted, 4 received, 0% packet loss, time 3099ms
+rtt min/avg/max/mdev = 0.065/0.083/0.100/0.015 ms
+
+# 09:20:13   fix applied
+$ T-09-duplicate-ip.sh fix
+$ remove the duplicated address from pc3
+$ restart pc3's DHCP client loop
+$ clear the poisoned cache entry on r1 (the owner re-announces itself)
+Received 0 response(s)
+
+# 09:20:20   verification
+$ T-09-duplicate-ip.sh verify
+$ no duplicate answers any more (arping -D from the owner)
+Received 0 response(s)
+$ and the router's cache points at the owner again
+10.10.30.132 lladdr aa:c1:ab:66:d0:8d DELAY 
+  pc4's real MAC: aa:c1:ab:66:d0:8d
+T-09 verified: the owner's traffic is healthy again
+
+# 09:20:31   done

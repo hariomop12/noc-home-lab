@@ -12,7 +12,13 @@ mkdir -p /var/lib/lab
 
 case "$1" in
     deconfig)
-        ip addr flush dev "$interface" 2>/dev/null || true
+        # Deliberately no `ip addr flush` here. busybox calls this whenever the
+        # client process starts, and the client loop restarts every 20 s, so a
+        # flush would drop a working address and its default route twenty times
+        # a minute - and any outage of the DHCP server would leave every host on
+        # the lab without an address, i.e. every ticket would become two faults.
+        # A real client keeps its lease while it retries; the `bound` branch
+        # below replaces the address when a new lease actually arrives.
         echo "$(hostname): lease released on $interface" >> "$LOG"
         ;;
     bound|renew)

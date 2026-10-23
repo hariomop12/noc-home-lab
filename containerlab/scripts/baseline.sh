@@ -55,8 +55,8 @@ printf '\ncontainerlab baseline - %s\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')"
 
 # ------------------------------------------------------------- containers ---
 hdr "containers"
-t "containers" "18 nodes running" \
-    bash -c "[ \"\$(docker ps --filter name=$PREFIX --format '{{.Names}}' | wc -l)\" = 18 ]"
+t "containers" "22 nodes running" \
+    bash -c "[ \"\$(docker ps --filter name=$PREFIX --format '{{.Names}}' | wc -l)\" = 22 ]"
 
 # ----------------------------------------------------------------- routing --
 hdr "routing (OSPF, one area)"
@@ -157,6 +157,21 @@ t "ntp-r1" "r1 is synced to srv-ntp" \
     bash -c "docker exec $PREFIX-r1 chronyc sources 2>/dev/null | grep -q '10.100.0.13'"
 t "ntp-sw1" "sw1 is synced to srv-ntp" \
     bash -c "docker exec $PREFIX-sw1 chronyc sources 2>/dev/null | grep -q '10.100.0.13'"
+
+# --------------------------------------------------------------- NOC stack --
+hdr "NOC stack (Phase 5)"
+t "zbx-db" "Postgres accepts connections (5432, out-of-band)" \
+    bash -c "docker exec $PREFIX-client nc -z -w2 172.21.21.72 5432"
+t "zbx-server" "Zabbix server listens (10051)" \
+    bash -c "docker exec $PREFIX-client nc -z -w2 10.100.0.21 10051"
+t "zbx-agent" "Zabbix agent listens (10050)" \
+    bash -c "docker exec $PREFIX-client nc -z -w2 10.100.0.23 10050"
+t "zbx-web" "frontend answers HTTP on 8080" \
+    bash -c "code=\$(docker exec $PREFIX-client curl -s -m 5 -o /dev/null -w '%{http_code}' http://10.100.0.20:8080/); [ \"\$code\" != 000 ]"
+t "zbx-api" "API answers apiinfo.version" \
+    bash -c "docker exec $PREFIX-client curl -s -m 5 -H 'Content-Type: application/json-rpc' \
+        -d '{\"jsonrpc\":\"2.0\",\"method\":\"apiinfo.version\",\"params\":{},\"id\":1}' \
+        http://10.100.0.20:8080/api_jsonrpc.php | grep -q result"
 
 # ------------------------------------------------------------------ summary --
 printf '\n'

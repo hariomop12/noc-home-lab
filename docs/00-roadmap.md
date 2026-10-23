@@ -135,29 +135,61 @@ problem.** Format and severity guide: [tickets/README.md](tickets/README.md).
 Method to follow every time: symptom → hypothesis → checks → root cause → fix →
 prevention. Ten scenarios are listed in [../labs/README.md](../labs/README.md).
 
-- [ ] Break a working multi-VLAN network in ten different ways, one at a time.
-- [ ] For each one, write a ticket with the real commands and real output.
-- [ ] Write the RCA in a way a non-engineer could follow.
-- [ ] For each one, name the monitoring alert that *should* have caught it.
+- [x] Break a working multi-VLAN network in ten different ways, one at a time.
+- [x] For each one, write a ticket with the real commands and real output.
+- [x] Write the RCA in a way a non-engineer could follow.
+- [x] For each one, name the monitoring alert that *should* have caught it.
 
 **Exit criterion:** a symptom is given, and root cause is found in under 15
 minutes using method rather than memory.
+
+**Status: complete** (2026-10-18). All ten tickets are written up in
+`docs/tickets/T-01…T-10.md`, each quoting a raw transcript from
+`containerlab/artifacts/T-NN-*.txt`. They run as code: one fault per script
+(`containerlab/faults/`), injected, diagnosed, fixed and verified by
+`./scripts/run-tickets.sh`, which re-generates every transcript. Four of them were
+rewritten after their first evidence failed to prove anything: T-01 (the simulated
+ISP does not filter RFC1918, so the proof has to be the source address on the wire,
+not the ping), T-04 (turning STP off does not un-block the port STP had blocked, so
+the loop stayed idle and there was no storm to see), T-05 ("the internet is down"
+is really the WAN adjacency dead while the branch quietly carries the traffic), and
+T-09 (the duplicate address has to announce itself, or nothing has it cached and the
+owner notices nothing).
 
 ---
 
 ## Phase 5 — Full NOC simulation
 
-- [ ] Zabbix stack running in Docker (server, frontend, Postgres, agent).
-- [ ] Every router and switch polled over SNMP; interfaces and CPU monitored.
-- [ ] Central syslog collecting from every device, with accurate NTP.
-- [ ] Triggers and dashboards for: interface down, high CPU, packet loss,
-      SNMP unreachable, syslog severity 0-2.
-- [ ] Failover drill: fail a link, alert fires, timeline documented end to end.
+- [x] Zabbix stack running in Docker (server, frontend, Postgres, agent).
+- [x] Every router and switch polled over SNMP; interfaces and CPU monitored —
+      interfaces are found by low-level discovery on the standard IF-MIB
+      `ifOperStatus` OID (one rule and one item prototype covers every port that
+      comes and goes), CPU and load come from the UCD-SNMP MIB.
+- [x] Central syslog collecting from every device, with accurate NTP.
+- [x] Triggers for interface down, high CPU, packet loss and SNMP unreachable —
+      92 triggers over 12 monitored hosts: 41 declared by name and 51 created by
+      the interface-discovery prototype, one per port. Every kind was exercised by
+      a real fault, not only created.
+- [ ] Dashboards, and a trigger for syslog severity 0-2. The collector already
+      receives the logs; what is missing is the alarm on them.
+- [x] Failover drill: fail a link, alert fires, timeline documented end to end —
+      two faults, one trunk-wide (six alarms, the first 13 s after the fault and
+      all by 14 s) and one single-uplink (one alarm, 25 s), each with a
+      container-to-container ping as evidence independent of Zabbix.
 - [ ] Ansible pushes the golden baseline to every device in one run, and the
       result is diffed against the manual configuration.
 
 **Exit criterion:** something breaks, an alert fires before a user notices, and
 the response follows a written runbook.
+
+**Status: 5 of 6 done** (2026-10-18). The stack, the polling, the discovery, the
+collector, the triggers and the drill are all in `labs/lab-09-full-noc/README.md`
+with measured timelines; dashboards, the syslog-severity trigger and the Ansible
+push are the honest gaps. One structural limitation is recorded there as well:
+the NOC reaches every device over the lab's own network, so a fault that takes
+that path away takes the monitoring with it — which is exactly what the drill
+showed, and why the drill used a ping from an independent container as its
+non-Zabbix evidence.
 
 ---
 
@@ -185,3 +217,6 @@ the response follows a written runbook.
 | 2026-10-17 | Lab 07 complete: guide written (`labs/lab-07-branch-wan/README.md`), six configurations exported to `configs/lab-07/`, four captures in `wireshark/`, design-vs-config diff done. Phase 3 closed |
 | 2026-10-17 | Lab 07 correction, found while designing Lab 08: **drill B passed for the wrong reason.** A capture taken during the drill shows every echo request on the `ISP ↔ SRV-NET` link carrying the private source `10.100.0.50`. With `interface Gi0/1 overload` and `Gi0/1` shut, IOS creates no translation and forwards the packet untranslated; it only worked because the simulated ISP does not filter RFC1918 and has the HQ prefixes in OSPF. Recorded in the Lab 07 guide and design (section 8), and the corrected rule — internal transits are `ip nat inside`, so the router whose WAN is up translates — is designed into Lab 08 |
 | 2026-10-17 | Phase 3.5 design written (`docs/designs/redundancy-design.md`, status proposed): a second HQ router with its own WAN, HSRP split per VLAN keeping the existing `.1` VIPs, OSPF adjacency confined to a new VLAN 200 core transit with cost tuning per VLAN for path symmetry, a second inter-switch trunk with STP root control aligned to the HSRP active roles, and five measured drills. Verification against Cisco's IOSvL2 feature list confirmed 16 Gigabit interfaces and HSRP support, and that SPAN is unavailable — so captures stay on links |
+| 2026-10-18 | Phase 4 and Phase 5 rebuilt as **code, not clicks**, in `containerlab/`: the whole HQ + BR1 + ISP lab deploys from one `topology.clab.yml` (22 nodes, FRR routers, Linux-bridge switches, the repo's service images plus the Zabbix stack), and `./scripts/baseline.sh` proves 51 checks green. This is what makes the ticket labs repeatable — a fault is a script, not a story |
+| 2026-10-18 | Phase 4 closed: ten tickets written up in `docs/tickets/T-01…T-10.md`, each quoting a raw transcript regenerated by `./scripts/run-tickets.sh`. Three tickets were rewritten ater their evidence turned out not to prove the fault: T-01 (the simulated ISP accepts private sources, so the proof is the source address on the wire), T-04 (disabling STP does not un-block the port STP already blocked, so there was no storm to see), T-05 (the branch was quietly carrying the traffic the WAN link was supposed to carry), T-09 (the duplicate address was not announcing itself, so the victim noticed nothing). A fifth bug was in the ticket infrastructure itself: the DHCP stop/start helpers killed their own shell with a pattern that matched the loop *and* the pkill command line, which made T-10's fault heal itself and left T-02's repair without a client |
+| 2026-10-18 | Phase 5: Zabbix 7.0 stack (server, frontend, Postgres, agent) in the topology, declared entirely through the JSON-RPC API by `scripts/noc-bootstrap.py` — 12 hosts, 115 items, 92 triggers (41 declared, 51 discovered), interfaces found from `ifOperStatus` via low-level discovery, CPU and load from the UCD-SNMP MIB, every item supported. Drill run twice and measured: a trunk-wide fault fired six alarms with the first at 13 s, a single-uplink fault fired one alarm at 25 s, both repaired and verified, with a container-to-container ping as evidence that does not come from the thing being tested. Gaps left open on purpose: dashboards, the syslog severity 0-2 trigger, and the Ansible baseline push |

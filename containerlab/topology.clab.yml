@@ -140,6 +140,54 @@ topology:
         LAB_IP: 10.100.0.13/24
         LAB_GW: 10.100.0.1
 
+    # ------------------------------------------------------- NOC (Phase 5)
+    # The monitoring stack from the roadmap: database, server, web frontend and
+    # one agent watching the NOC host itself. All four sit in VLAN 40 next to
+    # the devices they poll, and each one also has a fixed address on the
+    # out-of-band network, which is how the browser reaches the frontend.
+    zbx-web:
+      kind: linux
+      image: clab-zbx-web:lab
+      mgmt-ipv4: 172.21.21.74
+      env:
+        ZBX_SERVER_HOST: 10.100.0.21
+        # The database sits on the out-of-band network, so a database restart
+        # can never disturb the lab wiring (see containerlab/README.md).
+        DB_SERVER_HOST: 172.21.21.72
+        POSTGRES_USER: zabbix
+        POSTGRES_PASSWORD: zabbixpass
+        POSTGRES_DB: zabbix
+        ZBX_SERVER_NAME: noc-home-lab
+        PHP_TZ: Asia/Kolkata
+
+    zbx-server:
+      kind: linux
+      image: clab-zbx-server:lab
+      mgmt-ipv4: 172.21.21.73
+      env:
+        DB_SERVER_HOST: 172.21.21.72
+        POSTGRES_USER: zabbix
+        POSTGRES_PASSWORD: zabbixpass
+        POSTGRES_DB: zabbix
+
+    zbx-db:
+      kind: linux
+      image: postgres:16-alpine
+      mgmt-ipv4: 172.21.21.72
+      env:
+        POSTGRES_USER: zabbix
+        POSTGRES_PASSWORD: zabbixpass
+        POSTGRES_DB: zabbix
+
+    # An agent on the monitoring host, so the NOC is monitored too.
+    zbx-agent:
+      kind: linux
+      image: clab-zbx-agent:lab
+      mgmt-ipv4: 172.21.21.75
+      env:
+        ZBX_SERVER_HOST: 10.100.0.21
+        ZBX_HOSTNAME: zbx-agent
+
     # -------------------------------------------------------------- Branch-1
     r2:
       kind: frr
@@ -183,6 +231,12 @@ topology:
     - endpoints: ["sw2:eth7", "srv-syslog:eth1"]  # VLAN 40
     - endpoints: ["sw2:eth8", "srv-web:eth1"]     # VLAN 40
     - endpoints: ["sw2:eth9", "srv-ntp:eth1"]     # VLAN 40
+    # --- NOC stack (Phase 5) --------------------------------------------------
+    - endpoints: ["sw2:eth10", "zbx-web:eth1"]     # 10.100.0.20  frontend
+    - endpoints: ["sw2:eth11", "zbx-server:eth1"]  # 10.100.0.21  server
+    - endpoints: ["sw2:eth12", "zbx-agent:eth1"]   # 10.100.0.23  agent
+    # The Postgres container deliberately has no lab-interface link: it is a
+    # backend on the out-of-band management network only (172.21.21.72).
 
     # --- Branch access layer -------------------------------------------------
     - endpoints: ["r2:eth2", "sw3:eth1"]      # trunk: VLANs 10,99

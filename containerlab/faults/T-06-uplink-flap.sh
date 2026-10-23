@@ -21,16 +21,21 @@ inject)
     ;;
 evidence)
     hr "the user's view: bursts of loss, not a dead network"
-    step "ping -c15 pc1 -> srv-web"
-    x pc1 ping -c15 -i 0.3 -W2 -q 10.100.0.12 2>&1 | tail -3
-    hr "the flapping link"
+    step "ping -c20 -i 1 pc1 -> srv-web   (20 s, so the 3 s down / 4 s up cycle bites)"
+    x pc1 ping -c20 -i 1 -W2 -q 10.100.0.12 2>&1 | tail -2
+    hr "the flap itself, measured once a second on sw1's uplink"
+    step "cat /sys/class/net/eth1/operstate   (sw1, ten samples a second apart)"
+    x sw1 sh -c 'for i in 1 2 3 4 5 6 7 8 9 10; do printf "%s " "$(cat /sys/class/net/eth1/operstate)"; sleep 1; done; echo'
+    echo "  a link that is *down* gives the same 100% loss as a link that is"
+    echo "  *flapping*; the pattern above is what separates the two."
+    hr "and the counters at both ends of that link"
     step "ip -s link show eth1   (sw1, uplink to r1)"
     x sw1 ip -s link show eth1 | sed -n '1p;4,5p'
     step "bridge -d link show eth1   (STP state right now)"
     x sw1 bridge -d link show | grep -A1 '^.*eth1' | head -2
-    hr "the collector has the story in its own words"
-    step "tail of sw1's messages on srv-syslog"
-    x srv-syslog sh -c 'ls -t /var/log/remote/*.log | head -3 | xargs -r grep -h -i "link" 2>/dev/null | tail -4' || true
+    echo "  honest note: the syslog collector has no line for this fault, because"
+    echo "  a Linux bridge does not log a port going down. On a switch whose OS"
+    echo "  writes %LINK-3-UPDOWN this ticket would quote that line instead."
     ;;
 fix)
     step "stop the flap loop and bring the link up"

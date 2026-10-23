@@ -19,6 +19,7 @@ pkill udhcpc 2>/dev/null || true
         sleep 20
     done
 ) &
+echo $! > /tmp/dhcp-loop.pid
 
 . /etc/lab/agents.sh
 

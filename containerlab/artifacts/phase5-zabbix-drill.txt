@@ -1,0 +1,80 @@
+
+==============================================================================
+FAULT 'trunk': VLAN 40 removed from sw2's uplinks (eth1 + eth2)
+the NOC sits in VLAN 40, so this removes its routed path to every device it polls while the lab keeps running
+==============================================================================
+
+[1] baseline (before the fault) - 14:14:19
+    Zabbix open problems : 0
+    item states          : {'0': 52}
+    ping 10.255.0.1  : reachable (2 packets transmitted, 2 received, 0% packet loss, time 1009ms)
+
+[2] fault injected - 14:14:19
+    sw2: bridge vlan del dev eth1 vid 40   (rc=0)
+    sw2: bridge vlan del dev eth2 vid 40   (rc=0)
+    ping 10.255.0.1  : UNREACHABLE (2 packets transmitted, 0 received, 100% packet loss, time 1006ms)   <- independent of Zabbix
+
+[3] waiting for the alarm (ICMP item = 30s, trigger needs 3) - 14:14:22
+    14:14:32  high      r1          Host unreachable by ICMP: r1
+    14:14:35  high      r2          Host unreachable by ICMP: r2
+    14:14:38  high      isp         Host unreachable by ICMP: isp
+    14:14:38  high      sw1         Host unreachable by ICMP: sw1
+    14:14:41  high      sw2         Host unreachable by ICMP: sw2
+    14:14:44  high      sw3         Host unreachable by ICMP: sw3
+    detection delay: injected 14:14:19 -> first alarm 14:14:32 = 13s (ICMP poll 30s, trigger after 3 lost polls)
+    (the 'SNMP data missing' triggers are the slow backstop: 5 minutes of no data)
+
+[4] fault repaired - 14:14:53
+    sw2: bridge vlan add dev eth1 vid 40   (rc=0)
+    sw2: bridge vlan add dev eth2 vid 40   (rc=0)
+    ping 10.255.0.1  : reachable (2 packets transmitted, 2 received, 0% packet loss, time 1044ms)
+
+[5] waiting for recovery - 14:14:55
+    14:16:02  RESOLVED  r1          Host unreachable by ICMP: r1
+    14:16:04  RESOLVED  r2          Host unreachable by ICMP: r2
+    14:16:06  RESOLVED  isp         Host unreachable by ICMP: isp
+    14:16:08  RESOLVED  sw1         Host unreachable by ICMP: sw1
+    14:16:10  RESOLVED  sw2         Host unreachable by ICMP: sw2
+    14:16:12  RESOLVED  sw3         Host unreachable by ICMP: sw3
+    recovery delay: last alarm -> last resolution = 88s
+
+    final state: 0 open problems, items {'0': 52}
+
+==============================================================================
+FAULT 'single': sw3's uplink to r2 is down
+one access switch disappears; the rest of the lab, including the branch router polled on its loopback, must stay green
+==============================================================================
+
+[1] baseline (before the fault) - 14:16:18
+    Zabbix open problems : 0
+    item states          : {'0': 52}
+    ping 10.20.99.13 : reachable (2 packets transmitted, 2 received, 0% packet loss, time 1044ms)
+
+[2] fault injected - 14:16:18
+    sw3: ip link set eth1 down   (rc=0)
+    ping 10.20.99.13 : UNREACHABLE (2 packets transmitted, 0 received, 100% packet loss, time 1059ms)   <- independent of Zabbix
+
+[3] waiting for the alarm (ICMP item = 30s, trigger needs 3) - 14:16:22
+    14:16:43  high      sw3         Host unreachable by ICMP: sw3
+    detection delay: injected 14:16:18 -> first alarm 14:16:43 = 25s (ICMP poll 30s, trigger after 3 lost polls)
+    (the 'SNMP data missing' triggers are the slow backstop: 5 minutes of no data)
+
+[4] fault repaired - 14:16:52
+    sw3: ip link set eth1 up   (rc=0)
+    ping 10.20.99.13 : UNREACHABLE (2 packets transmitted, 0 received, 100% packet loss, time 1049ms)
+
+[5] waiting for recovery - 14:16:56
+    14:16:02  RESOLVED  r1          Host unreachable by ICMP: r1
+    14:16:04  RESOLVED  r2          Host unreachable by ICMP: r2
+    14:16:06  RESOLVED  isp         Host unreachable by ICMP: isp
+    14:16:08  RESOLVED  sw1         Host unreachable by ICMP: sw1
+    14:16:10  RESOLVED  sw2         Host unreachable by ICMP: sw2
+    14:16:12  RESOLVED  sw3         Host unreachable by ICMP: sw3
+    14:18:12  RESOLVED  sw3         Host unreachable by ICMP: sw3
+    recovery delay: last alarm -> last resolution = 89s
+
+    final state: 0 open problems, items {'0': 52}
+
+== drill summary
+  trunk    alarm raised and cleared
+  single   alarm raised and cleared

@@ -106,9 +106,14 @@ interfaces respectively.
 | Node | Change | Detail |
 |---|---|---|
 | `R3` | **added** (`vios`, 512 MB, `Lo0 10.255.0.3/32`) | second HQ router, trunk to `SW2` |
-| `SW1` | adapters 4 → **5** | `Gi0/4` = second inter-switch trunk |
-| `SW2` | adapters 4 → **6** | `Gi0/4` = second inter-switch trunk, `Gi0/5` = trunk to `R3` |
+| `SW1` | adapters 4 → **5** | second inter-switch trunk |
+| `SW2` | adapters 4 → **6** | second inter-switch trunk + trunk to `R3` |
 | `ISP` | no new node, one new cable | `Gi0/3` `10.0.0.22/30` ↔ `R3 Gi0/1` |
+
+**Design vs build (found in stage 1).** IOSvL2 puts the extra NICs in slot 1, not
+slot 0: with 5 and 6 adapters the new ports are `Gi1/0` (`SW1` and `SW2`) and
+`Gi1/1` (`SW2`), not `Gi0/4`/`Gi0/5`. Everything else in the design held. Two
+GNS3 traps were recorded in section 20 in the same pass.
 
 ### Cabling added
 
@@ -254,9 +259,7 @@ Every echo request on the ISP link carried the private source `10.100.0.50`. It
 only worked because the simulated ISP does not filter RFC1918 and has the HQ
 prefixes in OSPF. A real ISP edge would have dropped it.
 
-So Lab 08 changes the rule, on the Lab 07 transit as well as the new VLAN 200:
-
-| Interface | Marking | Why |
+So Lab 08 changes the rule, on the Lab 07 transit as well as the new VLAN 200:| Interface | Marking | Why |
 |---|---|---|
 | LAN subinterfaces (`.10`–`.99`) on both routers | `ip nat inside` | the users |
 | `VLAN 200` core transit, `R1 Gi0/2` transit to BR1 | `ip nat inside` | an internal path to another NAT box is not an exit |
@@ -270,9 +273,18 @@ back to the router that owns it. The address on the internet link is then
 inside the HQ.
 
 The destination filter from Lab 07 becomes unnecessary in this shape (site-to-site
-traffic is never inside-to-outside), and the lab will say so rather than leave a
-route-map in the config that no longer earns its place. Both routers get the same
-treatment, and `R3` gets the Lab 07 NAT shape on its own WAN.
+traffic is never inside-to-outside), so both routers run the simpler rule — one
+standard access list, `NAT-INTERNAL`, permitting `10.10/16`, `10.20/16` and
+`10.100/16`, and `ip nat inside source list NAT-INTERNAL interface Gi0/1 overload`.
+The extended list and the route-map from Lab 07 are removed rather than left in
+the config looking load-bearing.
+
+**Second finding, same place.** Lab 07's `NAT-OVERLOAD-LIST` permitted `10.10/16`
+and `10.20/16` but not `10.100/16` — the SERVERS/DC supernet the design document
+*created* (decision DD-1 in the Lab 06 design). Every internet-bound packet from
+`CLIENT` and the servers was therefore outside the NAT rule as well: another
+private address leaving the lab, found the moment the list was read line by line.
+Including `10.100/16` is the fix.
 
 ## 11. Management plane
 
@@ -388,8 +400,83 @@ for every stage is the exported configuration from the previous one.
 
 | Item | State |
 |---|---|
-| Design | proposed — this document |
-| Build | not started |
+| Design | agreed (2026-10-17) — this document |
+| Build | **stage 1 complete**, stage 2 in progress |
 | Prerequisites | Labs 06 and 07 complete; `configs/lab-07/` exported; the Lab 07 drill-B correction recorded |
-| First action | Stage 0/1: export check, then add adapters to `SW1`/`SW2` and add `R3` |
 | Riskiest step | Stage 2, the address shift on `R1` — one window, HSRP configured in the same batch |
+
+## 20. Build notes
+
+Things the build taught that the design did not know. Kept here as they happen,
+because the guide is written from them.
+
+**Changing adapters breaks the pre-existing links.** After `SW1` and `SW2` were
+given 5 and 6 adapters and restarted, every port that was cabled *before* the
+change reported `notconnect` — the new NICs were up, the old ones were not. GNS3
+left those NICs in the link-down state and did not re-apply it on start. The QEMU
+monitor's `set_link gns3-N on` is what GNS3 itself uses to bring a link up, so
+`linkup.py` in the helper directory does exactly that for every NIC of a named
+node. **It has to be run after every restart of a switch in this lab**, which
+matters for the drill that shuts `SW1` down. The settings survive the run but not
+a restart.
+
+**Never send `quit` to the QEMU monitor.** It powers the VM off. It was sent
+while probing the link state, and `SW1` came back up in the GRUB shell instead of
+IOS: the guest filesystem's boot path had been damaged by the unclean kill, while
+the qcow2 itself checked out clean (`qemu-img check`). The fix was to rebuild the
+node's overlay disk from the appliance image (`qemu-img create -f qcow2 -F qcow2
+-b <base> hda_disk.qcow2`) and re-apply `configs/lab-07/SW1.cfg`. The damaged
+overlay is kept next to it as `hda_disk.qcow2.grub-broken-20261017`.
+
+**`exit` in an applied command file leaves configuration mode.** A stray `exit`
+after the global settings in `r3-base.txt` sent every following line into enable
+mode, where `interface Loopback0` is an invalid command. The whole first R3 pass
+was a no-op past the hostname. Worth remembering: the helper sends lines blind,
+so a command file is a script, not a transcript.
+
+**A node cloned through the API inherits the source node's MAC base.** `R3` was
+created by posting `R1`'s node body with a new name, so it kept
+`mac_address = 0c:9d:c6:ef:00:00`. GNS3 derives *every* adapter MAC from that
+base (`…:00:00`, `…:00:01`, …), so `R1` and `R3` were on the wire with identical
+MACs for all four ports. The visible symptoms, all of which look like routing
+faults rather than an L2 fault:
+
+* every HSRP group showed `Active / unknown` on **both** routers — each was
+  hearing its own virtual MAC fragments, never a peer hello;
+* no OSPF adjacency formed over VLAN 200 (`R1` and `R3` are the only pair that
+  shares a broadcast domain on identical MACs);
+* `SW2` learned `R1`'s MAC on `R3`'s port `Gi1/1`.
+
+Fix: give the node a unique `mac_address` and restart it. Check a cloned node
+with `show interface GigabitEthernet0/0 | include [Hh]ardware` on both routers —
+if the two addresses match, nothing else in the lab will work.
+
+**A link can be up at both ends and still carry nothing.** After the adapter
+change, `SW1 Gi0/1 ↔ SW2 Gi0/0` (the original inter-switch trunk) read
+`connected` + `trunking` on both ends, both ends were *transmitting* (STP
+BPDUs), and both ends showed `0 packets input`. `R1 ↔ SW1` was in the same
+state. The link existed in the project with correct adapter numbers and
+`suspend: false`; its NIO pair was simply not passing frames, and a restart alone
+did not repair it. Deleting and recreating the link (which allocates fresh NIO
+ports) did. The diagnostic that finds this in one step is `show cdp neighbors`
+plus the input counters on both ends of the link, not the interface state.
+
+**An IOSvL2 VLAN database is not in `startup-config`.** `vlan 200` /
+`name CORE-TRANSIT` lives in `flash:vlan.dat`, so
+`show startup-config | include ^vlan 200` prints nothing even when the VLAN is
+saved and does survive a reload. That check gives a false negative — the honest
+test is `show vlan brief` after the reload.
+
+**The adapter change silently dropped a link.** `SW1 Gi0/2 ↔ PC1` vanished from
+the project during the build: `SW1` still showed the port as `PC1-HR` and
+`notconnect`, while uBridge still held a stale bridge for the PC1 node. Diffing
+the live link list against `lab-06-hq.gns3.pre-lab08` is how it was caught — that
+comparison is now part of the stage-1 check. Recreating it needs the VPCS node
+stopped first, otherwise the API answers `409 … bridge 'VPCS-…' already exist`.
+
+**Order that worked.** Stop `R1`, `R3`, `SW1`, `SW2`; recreate the two suspect
+links; start the four; run `linkup.py` for every restarted node (plus `ISP`, which
+was not restarted — `set_link` works on a running VM); then verify with CDP and
+counters. HSRP came up in the designed roles on the first try after that, and
+`R1` formed `FULL/DR` with `R3` over `Gi0/0.200`.
+

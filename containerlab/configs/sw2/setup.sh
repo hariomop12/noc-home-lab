@@ -47,6 +47,12 @@ add_access eth6 40
 add_access eth7 40
 add_access eth8 40
 add_access eth9 40
+# Phase 5: the NOC stack lives in VLAN 40 next to the servers it watches.
+# (The Postgres container is deliberately not here - it is a backend on the
+# out-of-band network only, see containerlab/README.md.)
+add_access eth10 40   # zbx-web
+add_access eth11 40   # zbx-server
+add_access eth12 40   # zbx-agent
 
 bridge vlan add dev "$BR" vid 99 self pvid untagged
 ip addr add 10.10.99.12/24 dev "$BR"

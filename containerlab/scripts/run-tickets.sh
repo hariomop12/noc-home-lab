@@ -26,31 +26,47 @@ fail=0
 
 for f in "$root"/faults/T-*.sh; do
     id=$(basename "$f" .sh)
-    if [ -n "$only" ] && [ "${id%%-*}" != "$only" ]; then continue; fi
+    # Single-ticket mode: `run-tickets.sh T-04` must match T-04-broadcast-storm.
+    # A prefix compare, not `${id%%-*}`: that expands to "T" (the longest suffix
+    # match is "-04-broadcast-storm"), so the filter matched nothing and the
+    # script printed "all tickets verified" without running a single fault.
+    if [ -n "$only" ] && [ "${id:0:${#only}}" != "$only" ]; then continue; fi
 
     out="$art/$id.txt"
+    nodes=$(docker ps --format '{{.Names}}' | grep -c '^clab-noclab-')
     {
+        # Every phase is stamped. The ticket write-ups quote these lines as their
+        # timeline, so the numbers in docs/tickets/ are the runner's, not a
+        # reconstruction after the fact.
         printf '### %s\n' "$id"
-        printf '#   %s\n' "$(date -Is)"
-        printf '#   containerlab lab: noclab, 18 nodes\n\n'
+        printf '#   started %s\n' "$(date -Is)"
+        printf '#   containerlab lab: noclab, %s nodes running\n\n' "$nodes"
 
+        printf '# %s   fault injected\n' "$(date +%H:%M:%S)"
         printf '$ %s.sh inject\n' "$id"
         bash "$f" inject
 
         sleep "$settle"
 
-        printf '\n$ %s.sh evidence\n' "$id"
+        printf '\n# %s   evidence collected (fault live)\n' "$(date +%H:%M:%S)"
+        printf '$ %s.sh evidence\n' "$id"
         bash "$f" evidence
 
-        printf '\n$ %s.sh fix\n' "$id"
+        printf '\n# %s   fix applied\n' "$(date +%H:%M:%S)"
+        printf '$ %s.sh fix\n' "$id"
         bash "$f" fix
         sleep 4
 
-        printf '\n$ %s.sh verify\n' "$id"
+        printf '\n# %s   verification\n' "$(date +%H:%M:%S)"
+        printf '$ %s.sh verify\n' "$id"
         bash "$f" verify
+        printf '\n# %s   done\n' "$(date +%H:%M:%S)"
     } >"$out" 2>&1
 
-    verdict=$(tail -1 "$out")
+    # The verdict is the ticket script's own last word about the fix, not the
+    # file's last line - the transcript now ends with a "done" timestamp, and a
+    # tail -1 verdict would have reported every failure as a pass.
+    verdict=$(grep -E '^T-[0-9]+ (verified.*|STILL BROKEN)' "$out" | tail -1)
     if printf '%s' "$verdict" | grep -qi 'still broken'; then
         fail=$((fail + 1))
         printf '%-32s %sFAIL%s  %s\n' "$id" $'\033[31m' $'\033[0m' "$verdict"

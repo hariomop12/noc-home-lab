@@ -53,6 +53,11 @@ not virtual ones.
                       V10   V20     V30 V30
                                               client + srv-dns/syslog/web/ntp
                                                     (VLAN 40 SERVERS)
+                                              + zbx-web, zbx-server, zbx-agent
+                                                (VLAN 40, Phase 5 NOC)
+                                              zbx-db: Postgres, deliberately
+                                              not on a lab link - it lives on
+                                              the out-of-band network only
 
                      +--------+
                      |   r2   |--+-- sw3 -- pc5, pc6           BR1 VLAN 10
@@ -77,6 +82,10 @@ not virtual ones.
 | `srv-web` | linux | `web:lab` | Internal web server |
 | `srv-ntp` | linux | `ntp:lab` | NTP server for every device |
 | `srv-net` | linux | `web:lab` | The "internet" behind the ISP |
+| `zbx-web` | linux | `clab-zbx-web:lab` | Zabbix 7.0 frontend, VLAN 40 `.20`, UI on :8080 |
+| `zbx-server` | linux | `clab-zbx-server:lab` | Zabbix server (poller), VLAN 40 `.21` |
+| `zbx-agent` | linux | `clab-zbx-agent:lab` | Zabbix agent 2 watching the NOC host, VLAN 40 `.23` |
+| `zbx-db` | linux | `postgres:16-alpine` | Zabbix database, **out-of-band only** (`172.21.21.72`) |
 
 Routers and switches all run the same management agents
 (`configs/common/agents.sh`): `snmpd` (community `labRO`), `rsyslogd`
@@ -99,6 +108,8 @@ forwarding to `10.100.0.11`, and `chronyd` pointed at `10.100.0.13`.
 | Simulated internet | `200.1.1.0/24` | isp `.1`, srv-net `.10` |
 | Loopbacks | — | r1 `10.255.0.1`, r2 `10.255.0.2`, isp `100.64.0.1` |
 | Servers (VLAN 40) | — | dns `.10`, syslog `.11`, web `.12`, ntp `.13`, client `.50` |
+| NOC stack (VLAN 40) | — | zbx-web `.20`, zbx-server `.21`, zbx-agent `.23` |
+| NOC database | — | zbx-db on the out-of-band network, `172.21.21.72` |
 | Switch management | — | sw1 `10.10.99.11`, sw2 `10.10.99.12`, sw3 `10.20.99.13` |
 | Out-of-band mgmt | `172.21.21.0/24` | containerlab network, `eth0` on every node |
 
@@ -113,7 +124,19 @@ cd containerlab
 
 sudo containerlab deploy  -t topology.clab.yml     # up
 containerlab inspect      -t topology.clab.yml     # what is running
-./scripts/baseline.sh                              # ~35 assertions, live
+./scripts/baseline.sh                              # 51 assertions, live
+
+# Phase 4: the ten tickets, each one a fault injected and fixed end to end
+./scripts/run-tickets.sh                           # all ten
+./scripts/run-tickets.sh T-04                      # just the broadcast storm
+#   the write-ups are in ../docs/tickets/ and quote these transcripts
+
+# Phase 5: the NOC, and the drill that proves it works
+python3 scripts/noc-bootstrap.py                   # declare the lab to Zabbix
+python3 scripts/nocctl.py status                   # what the NOC sees right now
+python3 scripts/nocctl.py problems                 # open problems + events
+python3 scripts/nocctl.py drill                    # inject -> alarm -> fix -> recover
+
 sudo containerlab destroy -t topology.clab.yml --cleanup
 ```
 
@@ -128,7 +151,8 @@ docker exec -it clab-noclab-client sh             # NOC toolbox
 The images come from this repository's `docker/` directory:
 
 ```bash
-cd ../docker && ./build.sh      # noc-tools, syslog, dnsmasq, web, ntp, clab-frr, clab-host
+cd ../docker && ./build.sh      # noc-tools, syslog, dnsmasq, web, ntp, clab-frr,
+                                # clab-host, and the three Zabbix wrappers
 ```
 
 ## Design notes
@@ -161,6 +185,42 @@ the gateway address, and the single server in VLAN 40 picks the scope from that
 field. BR1 users are served two hops away over the transit, which is the Lab 07
 design.
 
+**The NOC stack is four containers — and the database is deliberately not on a
+lab link.** `zbx-web` (`.20`) and `zbx-server` (`.21`) sit in VLAN 40 next to the
+servers they poll, and `zbx-agent` (`.23`) watches the NOC host itself. Postgres
+is the odd one out: it answers only on the out-of-band network
+(`172.21.21.72`). That is a direct consequence of the trap table below —
+containerlab runs every node with `restart: always`, a restart builds a new
+network namespace, and a node that received its lab interface before such a
+restart never gets it back, so the database reloaded in a loop while
+"Error: Nexthop has invalid gateway" scrolled past. A database needs no address
+inside the lab, so it no longer has one. The three Zabbix images are stock vendor
+images wrapped by `docker/clab-noc/noc-entrypoint.sh`, which waits for the lab
+interface, adds the address as root, and then hands over to the vendor entrypoint
+— that is how an unmodified upstream image ends up holding an address that only
+exists in this topology.
+
+**The monitoring is declared as code.** `scripts/noc-bootstrap.py` creates the
+host group, the 12 hosts, their items and their triggers through the JSON-RPC
+API — never by clicking in the UI, so the whole monitoring layer is one
+re-runnable command and an empty database after a lab rebuild is not a problem.
+As it stands: 6 low-level discovery rules (one per router and switch) that find
+every interface from IF-MIB `ifOperStatus`, 115 items and 92 triggers — 41
+declared by name and 51 generated by discovery, one per interface. Three API
+details cost real time here and are commented in the script:
+
+- A discovered device needs **two** interfaces: `type 2` (SNMP) to poll it, and
+  `type 1` for `icmpping`, which is a "simple check" the *server* executes. Give
+  it only the SNMP interface and `item.create` fails; give it only the plain one
+  and nothing can be polled.
+- An SNMP discovery rule's OID is `discovery[{#MACRO},<oid>]`, not a bare OID.
+  A bare OID is accepted by `discoveryrule.create` and then fails at the first
+  poll with `Invalid SNMP OID: pairs of macro and OID are expected` — the rule
+  looks configured and discovers nothing.
+- Zabbix's `delete` methods take a **bare array of ids**, not a named parameter.
+  Handed `{"itemids": [...]}` they answer `Invalid parameter "/1": a number is
+  expected`, which reads like a schema error instead of a wrong shape.
+
 **The WAN links start in OSPF `Waiting`.** On a broadcast segment a router waits
 `dead-interval` (40 s) before the DR election. The first verification run a few
 seconds after deploy showed r1 and r2 in `2-Way/DROther` on their WAN links — not
@@ -176,6 +236,12 @@ convergence, and the guides quote the state at the moment they were taken.
 | A service container has no lab address | The image entrypoint can run before containerlab has moved `eth1` in | The shared entrypoint waits for `LAB_IFACE` to appear (fixed in `docker/entrypoint-lib.sh`) |
 | `snmpd` exits with "Error opening specified endpoint udp:161" | The packaged default config also sets `agentaddress`, so two of them conflict | Start it with `-C -c /etc/snmp/snmpd.conf` |
 | A switch has no IP despite `ip addr add` | With `vlan_filtering 1` the bridge wants to know which VLAN its own port is in | `bridge vlan add dev br0 vid 99 self pvid untagged` before the address |
+| A wrapped vendor image starts and exits at once: `LogType "console" parameter can only be used with the -f` | Setting `ENTRYPOINT` in a Dockerfile **resets the `CMD` that came from the base image**, so the vendor entrypoint ran with no arguments and the server started without `--foreground` | Repeat the base image's `CMD` in every wrapper (`docker/clab-noc/*.Dockerfile`) |
+| A container reloads in a loop and its lab interface never appears | containerlab runs nodes with `restart: always`; every restart creates a new network namespace, so a veth that was attached earlier is gone for good | Give backends no lab link (`zbx-db`), or repair with `containerlab deploy --reconfigure` — never `docker restart` |
+| The ISP's messages are missing from the syslog collector while SNMP to the same box works | rsyslog's `omfwd` action **suspends** itself with a growing retry interval when the target has no route yet at boot | `action.resumeRetryCount="-1" action.resumeInterval="5"` (`configs/common/agents.sh`) |
+| Every host loses its address while any DHCP fault is live, and a ticket that pings from a host reports `Network unreachable` | The DHCP client loop restarts `udhcpc` every 20 s, and busybox's default script handler **flushes the address on `deconfig`** — which runs at every start. So each restart tears down a working lease, and during an outage nothing puts it back | The lab's `udhcpc-script.sh` deliberately does not flush on `deconfig`; the address is replaced on `bound` when a real lease arrives. One line, and every ticket stops being two faults at once |
+| Turning STP off changes nothing: the loop is still idle and there is no storm | A port that STP put in `blocking` **keeps that state** — `bridge link set dev eth4 state 3` does not move it either — so "disable STP to fix a loop problem" looks like it did nothing | Bounce the ports (`ip link set eth4 down && up`): with STP gone they skip listening/learning and go straight to forwarding, and re-enabling STP re-blocks one on its own |
+| A ticket quietly heals itself, or a repair fails to restart the DHCP client | `pkill -f "while :; do udhcpc"` also matches the shell that is *running* the kill, because its own command line contains the pattern as text — so the kill shoots itself and nothing after it runs: the loop survives (or a new one never starts), and the next renew rewrites `/etc/resolv.conf` and removes the injected address. T-10 looked like a fault that had already fixed itself; T-09's duplicate address vanished mid-evidence; T-02's repair could not bring pc2 back | `dhcp_loop_stop`/`dhcp_loop_start` in `faults/lib.sh`: match the loop with a character class (`whil[e] :; do udhcpc`) so the killer cannot match itself, kill `udhcpc` by name as well (the loop's child outlives its parent), and record the loop's PID in `/tmp/dhcp-loop.pid` |
 
 ## Evidence
 
@@ -183,13 +249,13 @@ convergence, and the guides quote the state at the moment they were taken.
 [`artifacts/baseline-noclab.txt`](artifacts/baseline-noclab.txt):
 
 <details>
-<summary><b>46 passed, 0 failed</b> — click for the run</summary>
+<summary><b>51 passed, 0 failed</b> — click for the run</summary>
 
 ```
-containerlab baseline - 2026-10-17 13:52:07 IST
+containerlab baseline - 2026-10-17 14:09:23 IST
 
 == containers
-  PASS  containers                     18 nodes running
+  PASS  containers                     22 nodes running
 
 == routing (OSPF, one area)
   PASS  ospf-r1                        r1: both neighbours FULL
@@ -230,6 +296,13 @@ containerlab baseline - 2026-10-17 13:52:07 IST
   PASS  snmp-r1  PASS  snmp-r2  PASS  snmp-sw1  PASS  snmp-sw2  PASS  snmp-sw3  PASS  snmp-isp
   PASS  syslog-r1  PASS  syslog-sw1  PASS  syslog-isp
   PASS  ntp-r1  PASS  ntp-sw1
+
+== NOC stack (Phase 5)
+  PASS  zbx-db                         Postgres accepts connections (5432, out-of-band)
+  PASS  zbx-server                     Zabbix server listens (10051)
+  PASS  zbx-agent                      Zabbix agent listens (10050)
+  PASS  zbx-web                        frontend answers HTTP on 8080
+  PASS  zbx-api                        API answers apiinfo.version
 ```
 
 </details>
@@ -240,7 +313,9 @@ Measured, not assumed: this is the whole network as one command, after a clean
 Raw evidence for the individual skills (captures, SNMP walks, syslog excerpts)
 lives with the lab that produced it:
 
-- `labs/lab-09-full-noc/README.md` — Phase 5: SNMP polling, syslog, Zabbix, alert
-  triage, failover timeline.
+- `labs/lab-09-full-noc/README.md` — Phase 5: Zabbix over SNMP, the failover
+  drill with its measured timestamps, and alert triage.
+- `artifacts/phase5-zabbix-drill.txt` — the drill's own transcript: fault
+  injected, alarm raised, fault repaired, recovery event, with wall-clock times.
 - `docs/tickets/` — Phase 4: the ten break-and-diagnose tickets, each against
-  this lab.
+  this lab, each quoting its `artifacts/T-NN-*.txt` session.

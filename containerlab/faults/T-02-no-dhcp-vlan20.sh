@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# T-02 - "A new PC in Sales never gets an IP address"  (P2)
+# T-02 - "No DHCP address on the new PC in Sales (VLAN 20)"  (P2)
 #
-# Fault: the DHCP relay on r1 no longer relays VLAN 20. VLANs 10 and 30 are
-# unaffected, and the server itself is fine, so the fault has to be localised to
-# one relay entry rather than to "DHCP is broken".
+# Fault: r1's relay is restarted without its VLAN 20 entry. The relay process is
+# up, the DHCP server is up, other VLANs get leases - only VLAN 20's requests
+# have nowhere to go. The symptom is what users report: "this PC has no address".
+#
+# Two things make this diagnosable rather than guessable:
+#   * the relay is proven alive (ps) while its config is proven incomplete (grep)
+#   * the server is proven healthy from a VLAN that *does* work
+# A single ping would have proven nothing at all.
 . "$(dirname "$0")/lib.sh"
 need_lab
-
 BROKEN=/tmp/relay-broken.conf
 
 case "${1:-}" in
@@ -16,22 +20,21 @@ inject)
                 pkill dnsmasq
                 dnsmasq --conf-file=$BROKEN"
     step "stop pc2's client and drop its lease, so the symptom is real"
-    x pc2 sh -c 'for p in $(pgrep -f "^sh /etc/lab/setup.sh$"); do kill "$p" 2>/dev/null; done
-                 pkill udhcpc 2>/dev/null
-                 ip addr flush dev eth1'
+    dhcp_loop_stop pc2
+    x pc2 sh -c 'ip addr flush dev eth1'
     ;;
 evidence)
     hr "who has a lease and who does not"
     for h in pc1 pc2 pc3; do printf '  %-4s %s\n' "$h" "$(pc_ip "$h")"; done
+    hr "the client keeps asking and gets nothing"
+    step "a live udhcpc attempt on pc2 (VLAN 20)"
+    x pc2 sh -c 'udhcpc -i eth1 -f -q -n -t 2 -T 2 -s /etc/lab/udhcpc-script.sh 2>&1; echo "  udhcpc exit=$?"'
     hr "the relay is running - with one entry missing"
     step "ps | grep dnsmasq   (on r1)"
     x r1 sh -c 'ps | grep "[d]nsmasq"'
-    step "grep dhcp-relay /tmp/relay-broken.conf   (on r1)"
+    step "grep dhcp-relay $BROKEN   (on r1)"
     x r1 grep dhcp-relay "$BROKEN"
-    hr "the client keeps asking"
-    step "tail -3 /var/log/dhcp.log   (on pc2)"
-    x pc2 tail -3 /var/log/dhcp.log
-    hr "the server is healthy - prove it from the other VLAN"
+    hr "the server is healthy - prove it from another VLAN"
     step "udhcpc on pc1 (VLAN 10) succeeds"
     x pc1 sh -c 'udhcpc -i eth1 -f -q -n -t 2 -T 2 -s /etc/lab/udhcpc-script.sh 2>&1 | tail -2'
     ;;
@@ -40,7 +43,7 @@ fix)
     x r1 sh -c 'pkill dnsmasq; sleep 1; dnsmasq --conf-file=/etc/lab/dhcp-relay.conf'
     x r1 rm -f "$BROKEN"
     step "restart pc2's DHCP client loop"
-    x pc2 sh -c 'nohup sh -c "while :; do udhcpc -i eth1 -f -q -n -t 5 -T 3 -s /etc/lab/udhcpc-script.sh >> /var/log/dhcp.log 2>&1; sleep 20; done" >/dev/null 2>&1 &'
+    dhcp_loop_start pc2
     ;;
 verify)
     wait_for 60 bash -c "[ -n \"\$(docker exec ${PREFIX}-pc2 ip -4 addr show eth1 | awk '/inet /{print \$2}')\" ]" \

@@ -1,0 +1,46 @@
+### T-05-ospf-mtu
+#   started 2026-10-18T09:23:02+05:30
+#   containerlab lab: noclab, 22 nodes running
+
+# 09:23:02   fault injected
+$ T-05-ospf-mtu.sh inject
+$ ip link set eth1 mtu 1400   (on r1)
+
+# 09:23:08   evidence collected (fault live)
+$ T-05-ospf-mtu.sh evidence
+
+---- the user's view ----
+ping 10.100.0.12 from pc1 : ok
+ping 200.1.1.10 from pc1 : ok
+ping 200.1.1.10 from pc5 : ok
+
+---- the adjacency that never came up ----
+$ show ip ospf neighbor   (on r1)
+
+Neighbor ID     Pri State           Up Time         Dead Time Address         Interface                        RXmtL RqstL DBsmL
+100.64.0.1        1 ExStart/DR      3.170s            36.829s 10.0.0.14       eth1:10.0.0.13                       0     0     0
+10.255.0.2        1 Full/-          1h14m53s          36.829s 10.0.0.2        eth3:10.0.0.1                        0     0     0
+
+
+---- and the reason ----
+$ mtu on r1 eth1 vs isp eth1
+112: eth1@if113: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1400 qdisc noqueue state UP mode DEFAULT group default qlen 1000
+113: eth1@if112: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9500 qdisc noqueue state UP mode DEFAULT group default 
+$ show ip ospf interface eth1   (r1)
+  ifindex 112, MTU 1400 bytes, BW 10000 Mbit <UP,LOWER_UP,BROADCAST,RUNNING,MULTICAST>
+  MTU mismatch detection: enabled
+  Transmit Delay is 1 sec, State Backup, Priority 1
+
+---- r1 also lost the default route OSPF was giving it ----
+$ ip route | grep default   (on r1)
+default nhid 36 via 10.0.0.2 dev eth3 proto ospf metric 20 
+
+# 09:23:12   fix applied
+$ T-05-ospf-mtu.sh fix
+$ ip link set eth1 mtu 9500   (on r1)
+
+# 09:23:16   verification
+$ T-05-ospf-mtu.sh verify
+T-05 verified: OSPF is Full again and r1 has its default route back
+
+# 09:23:16   done

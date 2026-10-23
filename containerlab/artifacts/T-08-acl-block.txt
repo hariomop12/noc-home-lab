@@ -1,0 +1,45 @@
+### T-08-acl-block
+#   started 2026-10-18T09:01:56+05:30
+#   containerlab lab: noclab, 22 nodes running
+
+# 09:01:56   fault injected
+$ T-08-acl-block.sh inject
+$ add an nft filter rule on r1: VLAN 10 -> web server :80 drop
+
+# 09:02:02   evidence collected (fault live)
+$ T-08-acl-block.sh evidence
+
+---- the user's view: the page does not load ----
+  pc1 (VLAN 10) HTTP status: timeout (no response)
+ping 10.100.0.12 from pc1 : ok
+
+---- it is not the server and not the network ----
+  pc2 (VLAN 20) HTTP status: 200
+  client (VLAN 40) HTTP status: 200
+$ pc1 has no completed flow to the web server's port (conntrack on r1)
+  pc1 flows to tcp/80: 0
+$ pc1's packets are tracked on r1 and left unreplied
+udp      17 8 src=10.10.10.113 dst=200.1.1.10 sport=60823 dport=33439 [UNREPLIED] src=200.1.1.10 dst=10.0.0.13 sport=33439 dport=60823 mark=0 use=1
+udp      17 8 src=10.10.10.113 dst=200.1.1.10 sport=49346 dport=33435 [UNREPLIED] src=200.1.1.10 dst=10.0.0.13 sport=33435 dport=49346 mark=0 use=1
+  the drop happens in the forward hook, after conntrack has seen the
+  packet - so an unreplied entry is what a dropped flow leaves behind.
+
+---- the rule that is doing it ----
+$ nft list table ip acl   (on r1)
+table ip acl {
+	chain forward {
+		type filter hook forward priority filter; policy accept;
+		ip saddr 10.10.10.0/24 ip daddr 10.100.0.12 tcp dport 80 drop
+	}
+}
+
+# 09:02:07   fix applied
+$ T-08-acl-block.sh fix
+$ nft delete table ip acl   (on r1)
+
+# 09:02:11   verification
+$ T-08-acl-block.sh verify
+  pc1 HTTP status: 200
+T-08 verified: VLAN 10 can load the site again
+
+# 09:02:11   done

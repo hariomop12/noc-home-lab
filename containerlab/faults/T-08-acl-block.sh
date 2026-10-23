@@ -13,7 +13,11 @@ need_lab
 
 WEB=10.100.0.12
 
-http() { x "$1" sh -c "curl -s -m 3 -o /dev/null -w '%{http_code}' http://$WEB/ 2>/dev/null || echo timeout"; }
+http() {
+    local code
+    code=$(x "$1" sh -c "curl -s -m 3 -o /dev/null -w '%{http_code}' http://$WEB/ 2>/dev/null")
+    [ "$code" = "000" ] && echo "timeout (no response)" || echo "$code"
+}
 
 case "${1:-}" in
 inject)
@@ -29,8 +33,12 @@ evidence)
     hr "it is not the server and not the network"
     printf '  pc2 (VLAN 20) HTTP status: %s\n' "$(http pc2)"
     printf '  client (VLAN 40) HTTP status: %s\n' "$(http client)"
-    step "pc1 -> server, TCP SYN never leaves r1"
-    x r1 sh -c "conntrack -L 2>/dev/null | grep -c \"dport=80\" | sed 's/^/  displaced flows: /'"
+    step "pc1 has no completed flow to the web server's port (conntrack on r1)"
+    x r1 sh -c "conntrack -L 2>/dev/null | grep 'src=10.10.10.' | grep -c 'dport=80' | sed 's/^/  pc1 flows to tcp\/80: /'"
+    step "pc1's packets are tracked on r1 and left unreplied"
+    x r1 sh -c "conntrack -L 2>/dev/null | grep 'src=10.10.10.' | head -2" || echo "  (nothing tracked from VLAN 10)"
+    echo "  the drop happens in the forward hook, after conntrack has seen the"
+    echo "  packet - so an unreplied entry is what a dropped flow leaves behind."
     hr "the rule that is doing it"
     step "nft list table ip acl   (on r1)"
     x r1 nft list table ip acl

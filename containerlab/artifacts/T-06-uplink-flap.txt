@@ -1,0 +1,45 @@
+### T-06-uplink-flap
+#   started 2026-10-18T09:23:16+05:30
+#   containerlab lab: noclab, 22 nodes running
+
+# 09:23:16   fault injected
+$ T-06-uplink-flap.sh inject
+$ start a flap loop on sw1 eth1 (3 s down / 4 s up)
+
+# 09:23:22   evidence collected (fault live)
+$ T-06-uplink-flap.sh evidence
+
+---- the user's view: bursts of loss, not a dead network ----
+$ ping -c20 -i 1 pc1 -> srv-web   (20 s, so the 3 s down / 4 s up cycle bites)
+20 packets transmitted, 0 received, +17 errors, 100% packet loss, time 19479ms
+pipe 4
+
+---- the flap itself, measured once a second on sw1's uplink ----
+$ cat /sys/class/net/eth1/operstate   (sw1, ten samples a second apart)
+up down down down up up up up down down 
+  a link that is *down* gives the same 100% loss as a link that is
+  *flapping*; the pattern above is what separates the two.
+
+---- and the counters at both ends of that link ----
+$ ip -s link show eth1   (sw1, uplink to r1)
+109: eth1@if108: <BROADCAST,MULTICAST> mtu 9500 qdisc noqueue master br0 state DOWN mode DEFAULT group default 
+     421431693  3660398      0      20       0       0 
+    TX:  bytes  packets errors dropped carrier collsns           
+$ bridge -d link show eth1   (STP state right now)
+109: eth1@if108: <BROADCAST,MULTICAST> mtu 9500 master br0 state disabled priority 32 cost 2 
+    hairpin off guard off root_block off fastleave off learning on flood on mcast_flood on bcast_flood on mcast_router 1 mcast_to_unicast off neigh_suppress off neigh_vlan_suppress off vlan_tunnel off isolated off locked off mab off mcast_n_groups 0 mcast_max_groups 0 
+  honest note: the syslog collector has no line for this fault, because
+  a Linux bridge does not log a port going down. On a switch whose OS
+  writes %LINK-3-UPDOWN this ticket would quote that line instead.
+
+# 09:23:54   fix applied
+$ T-06-uplink-flap.sh fix
+$ stop the flap loop and bring the link up
+
+# 09:23:58   verification
+$ T-06-uplink-flap.sh verify
+10 packets transmitted, 10 received, 0% packet loss, time 9230ms
+rtt min/avg/max/mdev = 0.094/0.146/0.250/0.045 ms
+T-06 verified: no loss over 10 packets
+
+# 09:24:15   done

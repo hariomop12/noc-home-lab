@@ -1,0 +1,27 @@
+API http://172.21.21.74:8080/api_jsonrpc.php: Zabbix 7.0.31
+  r1          checked  10.255.0.1   new items: 0
+  r2          checked  10.255.0.2   new items: 0
+  isp         checked  10.0.0.14    new items: 0
+  sw1         checked  10.10.99.11  new items: 0
+  sw2         checked  10.10.99.12  new items: 0
+  sw3         checked  10.20.99.13  new items: 0
+  srv-dns     checked  10.100.0.10  new items: 0
+  srv-syslog  checked  10.100.0.11  new items: 0
+  srv-web     checked  10.100.0.12  new items: 0
+  srv-ntp     checked  10.100.0.13  new items: 0
+  client      checked  10.100.0.50  new items: 0
+  zbx-agent   checked  10.100.0.23  new items: 0
+
+group 'noc-home-lab': 12 hosts, 41 triggers
+  r1          10.255.0.1
+  r2          10.255.0.2
+  isp         10.0.0.14
+  sw1         10.10.99.11
+  sw2         10.10.99.12
+  sw3         10.20.99.13
+  srv-dns     10.100.0.10
+  srv-syslog  10.100.0.11
+  srv-web     10.100.0.12
+  srv-ntp     10.100.0.13
+  client      10.100.0.50
+  zbx-agent   10.100.0.23

@@ -14,10 +14,20 @@ need_lab
 
 case "${1:-}" in
 inject)
-    step "stop pc1's DHCP loop, then point its resolver at a dead address"
-    x pc1 sh -c 'for p in $(pgrep -f "^sh /etc/lab/setup.sh$"); do kill "$p" 2>/dev/null; done
-                sleep 1
-                printf "nameserver 10.100.0.99\n" > /etc/resolv.conf'
+    step "stop pc1's DHCP client loop (a renew would rewrite the file and heal this)"
+    dhcp_loop_stop pc1
+    step "point pc1's resolver at an address that does not exist"
+    x pc1 sh -c 'printf "nameserver 10.100.0.99\n" > /etc/resolv.conf'
+    # The loop, not the client, is what heals this fault: killing only `udhcpc`
+    # leaves the loop alive, and its next start re-leases and rewrites
+    # /etc/resolv.conf from the (correct) DHCP option - which is how an earlier
+    # run of this ticket ended up "proving" a fault that was no longer there.
+    if x pc1 grep -q '10.100.0.99' /etc/resolv.conf; then
+        printf '  injected: pc1 now asks 10.100.0.99 for names\n'
+    else
+        echo '  INJECT FAILED: the resolver is back to its real value'
+        exit 1
+    fi
     ;;
 evidence)
     hr "the user's view: the name does not resolve"
@@ -36,8 +46,8 @@ evidence)
     ;;
 fix)
     step "put the real resolver back and restart the DHCP client"
-    x pc1 sh -c 'printf "nameserver 10.100.0.10\n" > /etc/resolv.conf
-                 nohup sh -c "while :; do udhcpc -i eth1 -f -q -n -t 5 -T 3 -s /etc/lab/udhcpc-script.sh >> /var/log/dhcp.log 2>&1; sleep 20; done" >/dev/null 2>&1 &'
+    x pc1 sh -c 'printf "nameserver 10.100.0.10\n" > /etc/resolv.conf'
+    dhcp_loop_start pc1
     ;;
 verify)
     wait_for 30 bash -c "docker exec ${PREFIX}-pc1 nslookup web.lab.local 2>/dev/null | grep -q '10.100.0.12'" \

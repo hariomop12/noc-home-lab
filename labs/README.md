@@ -51,28 +51,34 @@ The reasoning behind the ordering is in [../docs/00-roadmap.md](../docs/00-roadm
 |---|---|---|---|---|---|
 | 06 | [Small Enterprise HQ](lab-06-hq/README.md) | combo | 2-3 days | Requirements → design → build → verify, inter-VLAN, OSPF, ACLs, DHCP relay | done |
 | 07 | [Branch + WAN + NAT](lab-07-branch-wan/README.md) | combo | 2 days | WAN technologies, OSPF convergence, NAT/PAT, default route, link failure | done |
-| 08 | [Redundancy](../docs/designs/redundancy-design.md) *(design)* | complex | 1 day | HSRP, OSPF tuning, STP root control, convergence measurement | in-progress |
-| 09 | Full NOC | complex | 2-3 days | Zabbix, SNMP polling, central syslog, alert triage, failover drill | not-started |
+| 08 | [Redundancy](../docs/designs/redundancy-design.md) *(design written, build in GNS3)* | complex | 1 day | HSRP, OSPF tuning, STP root control, convergence measurement | in-progress |
+| 09 | [Full NOC](lab-09-full-noc/README.md) | complex | 2-3 days | Zabbix, SNMP polling, central syslog, alert triage, failover drill | done |
 
 ## Ticket labs
 
 Rules and format: [../docs/tickets/README.md](../docs/tickets/README.md).
 
-A ticket gives you a symptom and nothing else. The answer is deliberately not in
-the file until you collapse it.
+A ticket gives you a symptom and nothing else. The write-ups are in
+[`docs/tickets/`](../docs/tickets/) and the raw terminal transcripts they quote are
+in [`containerlab/artifacts/`](../containerlab/artifacts/) — the evidence is a
+command run against the live lab, not a description of one.
 
 | ID | Ticket | Severity | Status |
 |---|---|---|---|
-| T-01 | LAN works, no internet | P1 | not-started |
-| T-02 | No DHCP address on new PC | P2 | not-started |
-| T-03 | Two PCs in different VLANs cannot reach each other | P2 | not-started |
-| T-04 | Switch CPU at 100%, network crawling | P1 | not-started |
-| T-05 | OSPF neighbour stuck in EXSTART | P2 | not-started |
-| T-06 | Interface flapping with CRC errors | P2 | not-started |
-| T-07 | High latency and loss on the WAN link | P2 | not-started |
-| T-08 | ACL silently blocking traffic | P3 | not-started |
-| T-09 | Duplicate IP address conflict | P2 | not-started |
-| T-10 | Name resolution fails but IP connectivity works | P3 | not-started |
+| T-01 | LAN works, no internet | P1 | done |
+| T-02 | No DHCP address on new PC | P2 | done |
+| T-03 | Two PCs on one VLAN see each other but not the gateway | P2 | done |
+| T-04 | Network crawling, both switches pinned by a storm | P1 | done |
+| T-05 | OSPF neighbour stuck in EXSTART | P2 | done |
+| T-06 | The connection drops out every few seconds | P2 | done |
+| T-07 | High latency and loss on the WAN link | P2 | done |
+| T-08 | ACL silently blocking traffic | P3 | done |
+| T-09 | Duplicate IP address conflict | P2 | done |
+| T-10 | Name resolution fails but IP connectivity works | P3 | done |
+
+All ten run against the containerlab build (`containerlab/`), reachable with
+`./scripts/run-tickets.sh` (all of them) or `./scripts/run-tickets.sh T-04` (one
+of them).
 
 ## How to add a lab
 

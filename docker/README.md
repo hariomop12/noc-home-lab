@@ -1,8 +1,10 @@
 # Lab images
 
-Three small container images used as the *servers* in this lab. They replace the
-default images for a simple reason: a lab server must come up with a **known IP
-address** every time, without manual steps inside the container.
+The lab's images. Five of them are the *servers* in the GNS3 labs — they replace
+the default images for a simple reason: a lab server must come up with a **known
+IP address** every time, without manual steps inside the container. Five more
+build the containerlab lab (routers, switches, and the NOC stack) and are
+described [further down](#images-for-the-containerlab-build).
 
 Each image reads two environment variables at startup:
 
@@ -41,6 +43,33 @@ available through GNS3 because each service runs in the foreground.
 > The IP plan gives SRV-DNS `10.100.0.10` and SRV-SYSLOG `10.100.0.11`. Only one
 > service runs at a time in the micro labs, so each image defaults to the address
 > its lab needs. Override with `LAB_IP` when running both at once.
+
+## Images for the containerlab build
+
+The GNS3 labs need images that address themselves (`LAB_IP`). The containerlab
+build needs the opposite: the nodes are FRR routers, Linux-bridge switches and the
+Zabbix stack, and containerlab decides their addresses from the topology file. So
+these images take no `LAB_IP`; they wait for `LAB_IFACE` (the lab interface
+containerlab has just moved in) and then start their services.
+
+| Image | Tag | Purpose |
+|---|---|---|
+| FRR router | `clab-frr:lab` | The official FRR image plus the tools the guides assume: `iproute2`, `nftables`, `dnsmasq`, `net-snmp`, `rsyslog`, `chrony`, `tcpdump` |
+| Lab host / switch | `clab-host:lab` | Alpine with real `iproute2` (busybox `ip` cannot do 802.1Q bridge filtering) and the same agents; used for the switches, the PCs and the NOC toolbox |
+| Zabbix server | `clab-zbx-server:lab` | Vendor `zabbix/zabbix-server-pgsql` + the lab entrypoint |
+| Zabbix frontend | `clab-zbx-web:lab` | Vendor `zabbix/zabbix-web-nginx-pgsql` + the lab entrypoint |
+| Zabbix agent | `clab-zbx-agent:lab` | Vendor `zabbix/zabbix-agent` + the lab entrypoint |
+
+Two details worth knowing, both of which cost real time here:
+
+- The `clab-zbx-*` wrappers must **repeat the base image's `CMD`**. Setting
+  `ENTRYPOINT` in a Dockerfile resets the `CMD` inherited from the base image, so
+  the vendor entrypoint runs with no arguments and the daemon starts without
+  `--foreground` (`LogType "console" parameter can only be used with the -f`).
+- The Zabbix **database** is not wrapped at all: it runs `postgres:16-alpine`
+  with no lab link, on the containerlab management network. Give a database a lab
+  interface and `restart: always` will one day restart it into a fresh network
+  namespace where that interface no longer exists.
 
 ## Build
 

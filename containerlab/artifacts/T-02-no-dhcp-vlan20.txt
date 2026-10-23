@@ -1,0 +1,47 @@
+### T-02-no-dhcp-vlan20
+#   started 2026-10-18T09:21:36+05:30
+#   containerlab lab: noclab, 22 nodes running
+
+# 09:21:36   fault injected
+$ T-02-no-dhcp-vlan20.sh inject
+$ start the r1 relay without the VLAN 20 pair
+$ stop pc2's client and drop its lease, so the symptom is real
+
+# 09:21:43   evidence collected (fault live)
+$ T-02-no-dhcp-vlan20.sh evidence
+
+---- who has a lease and who does not ----
+  pc1  10.10.10.113
+  pc2  
+  pc3  10.10.30.141
+
+---- the client keeps asking and gets nothing ----
+$ a live udhcpc attempt on pc2 (VLAN 20)
+udhcpc: started, v1.36.1
+udhcpc: broadcasting discover
+udhcpc: broadcasting discover
+udhcpc: no lease, failing
+  udhcpc exit=1
+
+---- the relay is running - with one entry missing ----
+$ ps | grep dnsmasq   (on r1)
+ 1702 dnsmasq   0:00 dnsmasq --conf-file=/tmp/relay-broken.conf
+$ grep dhcp-relay /tmp/relay-broken.conf   (on r1)
+dhcp-relay=10.10.10.1,10.100.0.10
+dhcp-relay=10.10.30.1,10.100.0.10
+
+---- the server is healthy - prove it from another VLAN ----
+$ udhcpc on pc1 (VLAN 10) succeeds
+udhcpc: broadcasting select for 10.10.10.113, server 10.100.0.10
+udhcpc: lease of 10.10.10.113 obtained from 10.100.0.10, lease time 43200
+
+# 09:21:47   fix applied
+$ T-02-no-dhcp-vlan20.sh fix
+$ restart the relay from the real config   (on r1)
+$ restart pc2's DHCP client loop
+
+# 09:21:54   verification
+$ T-02-no-dhcp-vlan20.sh verify
+T-02 verified: pc2 has 10.10.20.112
+
+# 09:21:54   done

@@ -8,6 +8,14 @@ status: active
 A Cisco networking lab built on GNS3 — plus the configs, packet captures, notes
 and incident write-ups that come out of it.
 
+The first eight labs and every device configuration are IOS on GNS3, because that
+is what a CCNA/CCNP job runs. Phases 4 and 5 (the ten incident tickets and the
+whole monitoring stack) run on a second build of the same network in
+[`containerlab/`](containerlab/README.md): FRR routers and Linux-bridge switches,
+declarable in one file, deployable in ninety seconds, and scriptable — which is
+what makes a fault reproducible and a ticket's evidence regenerable instead of
+remembered.
+
 The purpose of this repository is not to collect topologies. It is to build one
 place where every lab leaves behind something reusable: a working configuration,
 a capture that was actually analysed, a fault that was actually diagnosed, and a
@@ -73,6 +81,12 @@ noc-home-lab/
 ├── configs/
 │   ├── golden-configs/        # tested baselines, start every lab here
 │   └── lab-NN/                # exported configs, proof the lab was done
+├── containerlab/              # the same network as one deployable file
+│   ├── topology.clab.yml      #   22 nodes: FRR routers, bridges, NOC stack
+│   ├── faults/T-NN-*.sh       #   the ten tickets, as injectable faults
+│   ├── scripts/               #   baseline, ticket runner, Zabbix bootstrap
+│   └── artifacts/             #   the raw evidence the write-ups quote
+├── docker/                    # the lab's container images (servers, NOC)
 ├── topology/                  # GNS3 portable project exports
 ├── wireshark/                 # captures and analysis notes
 └── ansible/                   # Phase 5: push baselines at scale
@@ -113,7 +127,7 @@ Step 6 is the step most people skip. Step 6 is the one that gets you hired.
 | 06 | [Small Enterprise HQ](labs/lab-06-hq/README.md) | combo | 2-3 days | Design, inter-VLAN, OSPF, ACLs, DHCP relay |
 | 07 | [Branch + WAN + NAT](labs/lab-07-branch-wan/README.md) | combo | 2 days | WAN links, OSPF, NAT/PAT, failover |
 | 08 | [Redundancy](docs/designs/redundancy-design.md) *(design)* | complex | 1 day | HSRP, OSPF tuning, STP root control, convergence measurement |
-| 09 | Full NOC | complex | 2-3 days | Zabbix, SNMP, syslog alerts, failover drill |
+| 09 | [Full NOC](labs/lab-09-full-noc/README.md) | complex | 2-3 days | Zabbix, SNMP polling, low-level discovery, alert design, measured failover drill |
 
 Status values used in lab notes: `not-started` · `in-progress` · `done` ·
 `needs-rework` (it worked but I could not explain why).
@@ -145,7 +159,7 @@ at least one *done* lab.
 | Fault diagnosis | 03 (break it) | 04, 05 | tickets |
 | Wireshark / packet analysis | 01 | 04, 07 | tickets |
 | Monitoring / alerting | 05 | 06 | 09 |
-| Automation (Ansible) | — | — | 09 |
+| Automation (Ansible) | — | — | — |
 
 ## Reference library
 
@@ -162,6 +176,7 @@ at least one *done* lab.
 | [docs/08-glossary.md](docs/08-glossary.md) | A term came up and you want one clean line |
 | [docs/09-wireshark-guide.md](docs/09-wireshark-guide.md) | You are about to capture traffic, or stuck reading a capture |
 | [docs/tickets/README.md](docs/tickets/README.md) | You are doing an incident-style lab |
+| [containerlab/README.md](containerlab/README.md) | You want the whole lab deployable from one file, or you are running the NOC |
 
 ## Conventions
 

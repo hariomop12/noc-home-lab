@@ -1,0 +1,44 @@
+### T-10-dns-broken
+#   started 2026-10-18T09:20:31+05:30
+#   containerlab lab: noclab, 22 nodes running
+
+# 09:20:31   fault injected
+$ T-10-dns-broken.sh inject
+$ stop pc1's DHCP client loop (a renew would rewrite the file and heal this)
+$ point pc1's resolver at an address that does not exist
+  injected: pc1 now asks 10.100.0.99 for names
+
+# 09:20:37   evidence collected (fault live)
+$ T-10-dns-broken.sh evidence
+
+---- the user's view: the name does not resolve ----
+$ nslookup web.lab.local   (pc1, using its configured resolver)
+;; communications error to 10.100.0.99#53: timed out
+;; communications error to 10.100.0.99#53: timed out
+;; no servers could be reached
+
+
+---- layer 3 is fine ----
+ping 10.100.0.12 from pc1 : ok
+
+---- the DNS server is fine too - ask it directly ----
+$ nslookup web.lab.local 10.100.0.10   (pc1, explicit server)
+Name:	web.lab.local
+Address: 10.100.0.12
+
+
+---- so the fault is the client's configuration ----
+$ cat /etc/resolv.conf   (pc1)
+nameserver 10.100.0.99
+$ last lease line   (pc1)
+pc1: lease 10.10.10.113/24 via 10.10.10.1 dns 10.100.0.10 domain lab.local
+
+# 09:20:54   fix applied
+$ T-10-dns-broken.sh fix
+$ put the real resolver back and restart the DHCP client
+
+# 09:20:59   verification
+$ T-10-dns-broken.sh verify
+T-10 verified: pc1 resolves names again
+
+# 09:20:59   done

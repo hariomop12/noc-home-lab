@@ -1,0 +1,50 @@
+### T-01-no-internet
+#   started 2026-10-18T09:21:14+05:30
+#   containerlab lab: noclab, 22 nodes running
+
+# 09:21:14   fault injected
+$ T-01-no-internet.sh inject
+$ nft flush ruleset   (on r1)
+$ conntrack -F   (on r1, so the fault is unambiguous)
+
+# 09:21:20   evidence collected (fault live)
+$ T-01-no-internet.sh evidence
+
+---- what the user reports ----
+ping 10.100.0.12 from pc1 : ok
+ping 200.1.1.10 from pc1 : ok
+  note: the reply comes back because this ISP accepts private sources -
+  the ping is NOT the proof here, the wire is.
+
+---- everything that still looks healthy (the trap) ----
+$ ip route on r1
+default nhid 38 via 10.0.0.14 dev eth1 proto ospf metric 20 
+10.0.0.12/30 dev eth1 proto kernel scope link src 10.0.0.13 
+10.100.0.0/24 dev eth2.40 proto kernel scope link src 10.100.0.1 
+
+---- no translation exists at all ----
+$ nft list ruleset on r1
+$ conntrack -L | grep 200.1.1 on r1   (after pc1 tried)
+
+---- the one check that is not healthy: the source address on the wire ----
+$ tcpdump on the ISP-facing link while pc1 pings 200.1.1.10
+IP 10.10.10.113 > 200.1.1.10: ICMP echo request, id 268, seq 1, length 64
+IP 200.1.1.10 > 10.10.10.113: ICMP echo reply, id 268, seq 1, length 64
+IP 10.10.10.113 > 200.1.1.10: ICMP echo request, id 268, seq 2, length 64
+IP 200.1.1.10 > 10.10.10.113: ICMP echo reply, id 268, seq 2, length 64
+
+# 09:21:27   fix applied
+$ T-01-no-internet.sh fix
+$ nft -f /etc/lab/nat.nft   (on r1)
+
+# 09:21:31   verification
+$ T-01-no-internet.sh verify
+T-01 verified: pc1 reaches 200.1.1.10 again
+$ and the internet edge now sees r1's WAN address, not pc1's
+IP 10.0.0.13 > 200.1.1.10: ICMP echo request, id 270, seq 1, length 64
+IP 200.1.1.10 > 10.0.0.13: ICMP echo reply, id 270, seq 1, length 64
+IP 10.0.0.13 > 200.1.1.10: ICMP echo request, id 270, seq 2, length 64
+IP 200.1.1.10 > 10.0.0.13: ICMP echo reply, id 270, seq 2, length 64
+icmp     1 25 src=10.10.10.113 dst=200.1.1.10 type=8 code=0 id=269 src=200.1.1.10 dst=10.0.0.13 type=0 code=0 id=269 mark=0 use=1
+
+# 09:21:36   done

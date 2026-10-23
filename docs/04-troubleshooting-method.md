@@ -91,6 +91,22 @@ lab-scale networks.
 | Duplicate address warnings | Static address inside the DHCP pool; two devices with the same address | `show ip dhcp conflict` |
 | High CPU on a switch | Broadcast storm, STP loop, port security violation storm | `show processes cpu sorted`, `show spanning-tree` |
 
+Every row above is exercised by a real ticket in this repository, run against the
+containerlab build rather than described:
+
+| Library symptom | Ticket | What was actually broken |
+|---|---|---|
+| Internet fails, internal works | T-01 | NAT ruleset flushed on the edge router |
+| Cannot get a DHCP address | T-02 | Relay started without one VLAN's entry |
+| One VLAN cannot reach another | T-03 | VLAN removed from both trunk uplinks |
+| High CPU on a switch | T-04 | Broadcast storm: STP off *and* the blocked port forced to forwarding |
+| Local ping works, remote fails | T-05 | WAN adjacency stuck in `ExStart` (MTU mismatch) |
+| Intermittent connectivity | T-06 | Uplink flapping on a three-second cycle |
+| Slow, but working | T-07 | 300 ms delay and 10% loss shaped onto the WAN |
+| Works for some hosts, not others | T-08 | ACL rule dropping one VLAN, silently |
+| Works for some hosts, not others | T-09 | Duplicate address: two hosts answering ARP |
+| Name resolution fails, ping by IP works | T-10 | Client pointed at a resolver that does not exist |
+
 ## Ticket discipline
 
 Every ticket lab follows the same shape. Format:

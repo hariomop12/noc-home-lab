@@ -9,6 +9,9 @@ need_lab
 
 case "${1:-}" in
 inject)
+    # The symptom is "pc3 cannot reach pc4", so pc4 must be reachable first:
+    # a host whose lease has expired would confuse this ticket with a DHCP fault.
+    need_lease pc4 || exit 1
     step "bridge vlan del vid 30 on both sw2 uplinks"
     x sw2 sh -c 'for p in eth1 eth2; do bridge vlan del dev $p vid 30; done'
     ;;
